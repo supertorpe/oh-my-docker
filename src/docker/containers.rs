@@ -1,0 +1,84 @@
+use bollard::Docker;
+use bollard::container::{ListContainersOptions, StopContainerOptions, RestartContainerOptions};
+use bollard::container::RemoveContainerOptions;
+use anyhow::Result;
+use serde_json::Value;
+
+use crate::app::event::ContainerSummary;
+
+pub async fn list_containers(docker: &Docker) -> Result<Vec<ContainerSummary>> {
+    let options = ListContainersOptions::<String> {
+        all: true,
+        size: true,
+        ..Default::default()
+    };
+
+    let containers = docker.list_containers(Some(options)).await?;
+
+    let summaries = containers
+        .into_iter()
+        .map(|c| {
+            let name = c
+                .names
+                .unwrap_or_default()
+                .first()
+                .cloned()
+                .unwrap_or_default()
+                .trim_start_matches('/')
+                .to_string();
+
+            let ports = c
+                .ports
+                .unwrap_or_default()
+                .iter()
+                .map(|p| {
+                    let typ = p.typ.as_ref().map(|t| format!("{}", t)).unwrap_or_else(|| "tcp".to_string());
+                    if let (Some(host), Some(hp)) = (&p.ip, p.public_port) {
+                        format!("{}:{}->{}/{}", host, hp, p.private_port, typ)
+                    } else {
+                        format!("{}/{}", p.private_port, typ)
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            ContainerSummary {
+                id: c.id.unwrap_or_default(),
+                name,
+                image: c.image.unwrap_or_default(),
+                state: c.state.unwrap_or_default(),
+                status: c.status.unwrap_or_default(),
+                ports,
+            }
+        })
+        .collect();
+
+    Ok(summaries)
+}
+
+pub async fn inspect_container(docker: &Docker, id: &str) -> Result<(Value, String)> {
+    let inspect = docker.inspect_container(id, None).await?;
+    let json = serde_json::to_value(&inspect)?;
+    let name = inspect.name.unwrap_or_default().trim_start_matches('/').to_string();
+    Ok((json, name))
+}
+
+pub async fn start_container(docker: &Docker, id: &str) -> Result<()> {
+    docker.start_container::<String>(id, None).await?;
+    Ok(())
+}
+
+pub async fn stop_container(docker: &Docker, id: &str) -> Result<()> {
+    docker.stop_container(id, None::<StopContainerOptions>).await?;
+    Ok(())
+}
+
+pub async fn restart_container(docker: &Docker, id: &str) -> Result<()> {
+    docker.restart_container(id, None::<RestartContainerOptions>).await?;
+    Ok(())
+}
+
+pub async fn delete_container(docker: &Docker, id: &str) -> Result<()> {
+    docker.remove_container(id, None::<RemoveContainerOptions>).await?;
+    Ok(())
+}
