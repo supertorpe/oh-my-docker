@@ -247,10 +247,10 @@ jobs:
           TAG="${{ github.ref_name }}"
           gh release create "$TAG" \
             --title "Release $TAG" \
-            --draft \
+            --target "$GITHUB_SHA" \
             --generate-notes \
             --repo "${{ github.repository }}"
 
-          for f in artifacts/*; do
-            gh release upload "$TAG" "$f" --clobber --repo "${{ github.repository }}"
-          done
+          gh release upload "$TAG" artifacts/* \
+            --clobber \
+            --repo "${{ github.repository }}"
