@@ -249,8 +249,10 @@ fn handle_image_run_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         (KeyCode::Enter, _) => Some(AppEvent::ImageRunSubmit),
         (KeyCode::Tab, _) | (KeyCode::Down, _) => Some(AppEvent::ImageRunFocusNext),
         (KeyCode::Up, _) => Some(AppEvent::ImageRunFocusPrev),
-        (KeyCode::Char('a'), KeyModifiers::NONE) | (KeyCode::Char('a'), KeyModifiers::SHIFT) => Some(AppEvent::ImageRunToggleAutoremove),
-        (KeyCode::Char(c), KeyModifiers::NONE) | (KeyCode::Char(c), KeyModifiers::SHIFT) => state.image_run.as_ref().map(|run| {
+        (KeyCode::Char(c), KeyModifiers::NONE) | (KeyCode::Char(c), KeyModifiers::SHIFT) => state.image_run.as_ref().and_then(|run| {
+            if c == 'a' && run.field_focus == 8 {
+                return Some(AppEvent::ImageRunToggleAutoremove);
+            }
             let (val, field) = match run.field_focus {
                 0 => (run.command.as_str(), ImageRunField::Command),
                 1 => (run.shell.as_str(), ImageRunField::Shell),
@@ -261,7 +263,7 @@ fn handle_image_run_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
                 6 => (run.volumes.as_str(), ImageRunField::Volumes),
                 _ => (run.container_name.as_str(), ImageRunField::ContainerName),
             };
-            AppEvent::ImageRunFieldUpdate(field, format!("{}{}", val, c))
+            Some(AppEvent::ImageRunFieldUpdate(field, format!("{}{}", val, c)))
         }),
         _ => None,
     }

@@ -35,7 +35,7 @@ pub fn render_run(frame: &mut Frame, run: &ImageRunState) {
     )));
 
     // --- Field: Shell ---
-    let shell_display = if run.shell.is_empty() { "sh".to_string() } else { run.shell.clone() };
+    let shell_display = if run.shell.is_empty() { String::new() } else { run.shell.clone() };
     lines.push(Line::from(Span::styled(
         format!(" {} Shell", if run.field_focus == 1 { "▸" } else { " " }),
         Style::default().fg(if run.field_focus == 1 { Color::White } else { Color::DarkGray }),
