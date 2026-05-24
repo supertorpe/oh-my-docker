@@ -4,6 +4,11 @@ A keyboard-driven Docker TUI (Terminal User Interface) written in Rust.
 
 Fast, minimal, and built for ops workflows — inspired by k9s, lazygit, and htop.
 
+## View in action
+
+[<img src="https://img.youtube.com/vi/l9wLgjm5CNo/hqdefault.jpg" width="600" height="300"
+/>](https://www.youtube.com/embed/l9wLgjm5CNo)
+
 ## Quick Start
 
 Download binary from [github releases](https://github.com/supertorpe/oh-my-docker/releases)
@@ -44,10 +49,6 @@ Requires Docker to be installed and the user to have access to the Docker socket
 - **Self-update** — background check for new versions on startup (configurable), `U` to check/download, auto-replaces binary
 - **Keyboard-first** — all actions available via keys, no mouse needed
 - **Fast** — async polling, non-blocking UI, ring buffers for logs/events
-
-## View in action
-
-[![Watch the video](https://img.youtube.com/vi/bVBkQSt3Tvg/hqdefault.jpg)](https://www.youtube.com/embed/bVBkQSt3Tvg)
 
 ## Keybindings
 
