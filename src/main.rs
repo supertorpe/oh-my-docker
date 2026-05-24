@@ -44,7 +44,13 @@ async fn main() -> Result<()> {
     }
 
     let mut terminal = init_terminal()?;
+    let search_txt = args.iter().skip(1).find(|a| !a.starts_with('-')).cloned();
+
     let mut state = app::state::AppState::new();
+    if let Some(ref txt) = search_txt {
+        state.containers.filter = txt.clone();
+        state.containers.filter_active = true;
+    }
     state.config = config;
     let (event_tx, mut event_rx) = mpsc::unbounded_channel::<app::event::AppEvent>();
 
