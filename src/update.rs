@@ -136,10 +136,13 @@ fn perform_update(version: &str, url: &str) -> Result<()> {
         return Err(anyhow::anyhow!("archive extraction failed"));
     }
 
+    let _ = std::fs::remove_file(&archive);
+
     let binary = find_binary(&temp_dir)
         .ok_or_else(|| anyhow::anyhow!("omdocker binary not found in archive"))?;
 
-    std::fs::rename(&binary, &current_exe)?;
+    std::fs::copy(&binary, &current_exe)?;
+    let _ = std::fs::remove_file(&binary);
     let _ = std::fs::remove_dir_all(&temp_dir);
     Ok(())
 }
