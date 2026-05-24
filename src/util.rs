@@ -1,3 +1,7 @@
+pub fn image_base_name(image: &str) -> &str {
+    image.split(':').next().unwrap_or(image)
+}
+
 pub fn resolve_host_user(user: &str) -> String {
     if user == "host" {
         let uid = std::process::Command::new("id")

@@ -83,15 +83,23 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
         }
         AppEvent::Navigate(mode @ Mode::ShellConfig(_)) => {
             if let Mode::ShellConfig(id) = &mode {
+                let container = new_state.containers.items.iter().find(|c| c.id == *id);
+                let name = container.map(|c| c.name.clone()).unwrap_or_default();
+                let image_base = container.map(|c| crate::util::image_base_name(&c.image).to_string());
                 let latest = new_state.config.latest_shell.clone().unwrap_or_else(|| "bash".to_string());
-                let name = new_state.containers.items.iter()
-                    .find(|c| c.id == *id)
-                    .map(|c| c.name.clone())
-                    .unwrap_or_default();
                 let per_container = new_state.config.containers.get(&name).cloned().unwrap_or_default();
-                let shell = per_container.shell.clone().unwrap_or(latest);
-                let user = per_container.user.clone().unwrap_or_default();
-                let workdir = per_container.workdir.clone().unwrap_or_default();
+                let per_image = image_base.as_ref()
+                    .and_then(|ib| new_state.config.images.get(ib).cloned())
+                    .unwrap_or_default();
+                let shell = per_container.shell.clone()
+                    .or_else(|| per_image.shell.clone())
+                    .unwrap_or(latest);
+                let user = per_container.user.clone()
+                    .or_else(|| per_image.user.clone())
+                    .unwrap_or_default();
+                let workdir = per_container.workdir.clone()
+                    .or_else(|| per_image.workdir.clone())
+                    .unwrap_or_default();
                 new_state.shell_config = Some(ShellConfigState {
                     container_id: id.clone(),
                     shell,
@@ -494,6 +502,13 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
                     user: if config.user.is_empty() { None } else { Some(config.user.clone()) },
                     workdir: if config.workdir.is_empty() { None } else { Some(config.workdir.clone()) },
                 });
+                if let Some(container) = new_state.containers.items.iter().find(|c| c.id == id) {
+                    let img_base = crate::util::image_base_name(&container.image).to_string();
+                    let entry = new_state.config.images.entry(img_base).or_default();
+                    entry.shell = Some(config.shell.clone());
+                    entry.user = if config.user.is_empty() { None } else { Some(config.user.clone()) };
+                    entry.workdir = if config.workdir.is_empty() { None } else { Some(config.workdir.clone()) };
+                }
                 commands.push(Command::SaveConfig);
                 new_state.mode_stack.back();
                 new_state.mode_stack.push(Mode::Shell(id));

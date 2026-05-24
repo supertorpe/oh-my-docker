@@ -14,6 +14,8 @@ pub struct OmdockerConfig {
     #[serde(default)]
     pub containers: HashMap<String, ContainerShellConfig>,
     #[serde(default)]
+    pub images: HashMap<String, ContainerShellConfig>,
+    #[serde(default)]
     pub check_updates: Option<bool>,
 }
 
@@ -22,6 +24,7 @@ impl Default for OmdockerConfig {
         Self {
             latest_shell: Some("bash".to_string()),
             containers: HashMap::new(),
+            images: HashMap::new(),
             check_updates: None,
         }
     }
