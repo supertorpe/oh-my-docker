@@ -15,9 +15,15 @@ pub fn render(frame: &mut Frame, state: &ShellState) {
         .border_style(Style::default().fg(Color::Cyan));
 
     let text = Text::from(vec![
-        Line::from(Span::styled("  Opening shell... (Press 'exit' or Ctrl+D to return)", Style::default().fg(Color::Yellow))),
+        Line::from(Span::styled("  Opening shell...", Style::default().fg(Color::Yellow))),
         Line::from(""),
-        Line::from(Span::styled("  Esc to cancel and stop container", Style::default().fg(Color::DarkGray))),
+        if state.stop_on_exit {
+            Line::from(Span::styled("  WARNING: Container will STOP when you exit (exit/Ctrl+D)", Style::default().fg(Color::Red)))
+        } else {
+            Line::from(Span::styled("  Container will keep running after you exit", Style::default().fg(Color::DarkGray)))
+        },
+        Line::from(""),
+        Line::from(Span::styled("  Esc to cancel", Style::default().fg(Color::DarkGray))),
     ]);
 
     let paragraph = Paragraph::new(text)
