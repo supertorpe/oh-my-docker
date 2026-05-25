@@ -129,15 +129,20 @@ pub struct ShellConfigState {
     pub field_focus: usize,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Copy)]
+pub enum StatSort { Name, Cpu, Memory, NetRx, NetTx, BlockRead, BlockWrite, Pids }
+
 #[derive(Clone, Debug)]
 pub struct StatisticsState {
     pub items: Vec<StatEntry>,
     pub loading: bool,
+    pub sort_by: StatSort,
+    pub sort_ascending: bool,
 }
 
 impl Default for StatisticsState {
     fn default() -> Self {
-        Self { items: Vec::new(), loading: true }
+        Self { items: Vec::new(), loading: true, sort_by: StatSort::Cpu, sort_ascending: false }
     }
 }
 

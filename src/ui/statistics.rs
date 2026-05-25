@@ -1,18 +1,35 @@
 use ratatui::Frame;
-use ratatui::layout::{Alignment, Constraint};
+use ratatui::layout::{Alignment, Constraint, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Cell, Paragraph, BorderType, Row, Table};
 
-use crate::app::state::StatisticsState;
+use crate::app::state::{StatSort, StatisticsState};
+
+fn sort_label(sort_by: &StatSort, ascending: bool) -> String {
+    let field = match sort_by {
+        StatSort::Name => "Name",
+        StatSort::Cpu => "CPU %",
+        StatSort::Memory => "Memory",
+        StatSort::NetRx => "Net Rx",
+        StatSort::NetTx => "Net Tx",
+        StatSort::BlockRead => "Block Read",
+        StatSort::BlockWrite => "Block Write",
+        StatSort::Pids => "PIDs",
+    };
+    let dir = if ascending { " \u{25b4}" } else { " \u{25be}" };
+    format!(" (sorted by {}{})", field, dir)
+}
 
 pub fn render(frame: &mut Frame, state: &StatisticsState) {
     let area = frame.area();
 
     let title = if state.loading {
         " STATISTICS (loading...) ".to_string()
+    } else if state.items.is_empty() {
+        " STATISTICS ".to_string()
     } else {
-        format!(" STATISTICS ({}) ", state.items.len())
+        format!(" STATISTICS ({}){}", state.items.len(), sort_label(&state.sort_by, state.sort_ascending))
     };
 
     let block = Block::default()
@@ -26,7 +43,7 @@ pub fn render(frame: &mut Frame, state: &StatisticsState) {
         let text = Text::from(vec![
             Line::from(Span::styled("  No running containers", Style::default().fg(Color::Yellow))),
             Line::from(""),
-            Line::from(Span::styled("  Esc  back", Style::default().fg(Color::DarkGray))),
+            Line::from(Span::styled("  s:sort  S:direction  Esc  back", Style::default().fg(Color::DarkGray))),
         ]);
         frame.render_widget(Paragraph::new(text).block(block), area);
         return;
@@ -45,9 +62,29 @@ pub fn render(frame: &mut Frame, state: &StatisticsState) {
         Constraint::Length(6),
     ];
 
+    let current_sort = &state.sort_by;
+    let ascending = state.sort_ascending;
+
     let header_cells = ["NAME", "CPU %", "MEM USAGE/LIMIT", "NET I/O", "BLOCK I/O", "PIDS"]
         .iter()
-        .map(|h| Cell::from(*h).style(header_style));
+        .enumerate()
+        .map(|(i, h)| {
+            let mut cell = Cell::from(*h).style(header_style);
+            let is_current = match (i, current_sort) {
+                (0, StatSort::Name) => true,
+                (1, StatSort::Cpu) => true,
+                (2, StatSort::Memory) => true,
+                (3, StatSort::NetRx) | (3, StatSort::NetTx) => true,
+                (4, StatSort::BlockRead) | (4, StatSort::BlockWrite) => true,
+                (5, StatSort::Pids) => true,
+                _ => false,
+            };
+            if is_current {
+                let arrow = if ascending { " \u{25b4}" } else { " \u{25be}" };
+                cell = Cell::from(format!("{}{}", h, arrow)).style(header_style.fg(Color::Yellow));
+            }
+            cell
+        });
     let header_row = Row::new(header_cells).height(1);
 
     let rows: Vec<Row> = state
@@ -106,4 +143,15 @@ pub fn render(frame: &mut Frame, state: &StatisticsState) {
 
     let table = Table::new(rows, widths).header(header_row).block(block);
     frame.render_widget(table, area);
+
+    let footer = Rect {
+        x: area.x,
+        y: area.height.saturating_sub(1),
+        width: area.width,
+        height: 1,
+    };
+    frame.render_widget(
+        Paragraph::new(" s:sort  S:direction  Esc  back").style(Style::default().fg(Color::DarkGray)),
+        footer,
+    );
 }

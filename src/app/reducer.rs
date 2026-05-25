@@ -755,8 +755,40 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
 
         // --- Statistics ---
         AppEvent::StatisticsUpdated(stats) => {
-            new_state.statistics.items = stats;
+            let sort_by = new_state.statistics.sort_by;
+            let ascending = new_state.statistics.sort_ascending;
+            let mut items = stats;
+            items.sort_by(|a, b| {
+                let cmp = match sort_by {
+                    crate::app::state::StatSort::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+                    crate::app::state::StatSort::Cpu => a.cpu_percent.partial_cmp(&b.cpu_percent).unwrap_or(std::cmp::Ordering::Equal),
+                    crate::app::state::StatSort::Memory => a.memory_usage.cmp(&b.memory_usage),
+                    crate::app::state::StatSort::NetRx => a.net_rx.cmp(&b.net_rx),
+                    crate::app::state::StatSort::NetTx => a.net_tx.cmp(&b.net_tx),
+                    crate::app::state::StatSort::BlockRead => a.block_read.cmp(&b.block_read),
+                    crate::app::state::StatSort::BlockWrite => a.block_write.cmp(&b.block_write),
+                    crate::app::state::StatSort::Pids => a.pids.cmp(&b.pids),
+                };
+                if ascending { cmp } else { cmp.reverse() }
+            });
+            new_state.statistics.items = items;
             new_state.statistics.loading = false;
+        }
+        AppEvent::CycleSortStat => {
+            use crate::app::state::StatSort;
+            new_state.statistics.sort_by = match new_state.statistics.sort_by {
+                StatSort::Name => StatSort::Cpu,
+                StatSort::Cpu => StatSort::Memory,
+                StatSort::Memory => StatSort::NetRx,
+                StatSort::NetRx => StatSort::NetTx,
+                StatSort::NetTx => StatSort::BlockRead,
+                StatSort::BlockRead => StatSort::BlockWrite,
+                StatSort::BlockWrite => StatSort::Pids,
+                StatSort::Pids => StatSort::Name,
+            };
+        }
+        AppEvent::ToggleSortDirection => {
+            new_state.statistics.sort_ascending = !new_state.statistics.sort_ascending;
         }
 
         // --- Networks ---

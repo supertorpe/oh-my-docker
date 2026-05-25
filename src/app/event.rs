@@ -191,6 +191,9 @@ pub enum AppEvent {
     SelectVolume(usize),
     #[allow(dead_code)]
     RemoveVolume(String),
+
+    CycleSortStat,
+    ToggleSortDirection,
 }
 
 #[derive(Clone, Debug)]
