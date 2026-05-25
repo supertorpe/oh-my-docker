@@ -45,6 +45,37 @@ pub async fn remove_image(docker: &Docker, id: &str) -> Result<()> {
     Ok(())
 }
 
+pub async fn remove_dangling_images(docker: &Docker) -> Result<usize> {
+    let options = ListImagesOptions::<String> {
+        all: true,
+        ..Default::default()
+    };
+    let images = docker.list_images(Some(options)).await?;
+    let dangling: Vec<String> = images
+        .iter()
+        .filter(|i| {
+            i.repo_tags.iter().any(|t| t.starts_with("<none>:"))
+        })
+        .map(|i| i.id.clone())
+        .collect();
+    let count = dangling.len();
+    for id in &dangling {
+        let _ = docker.remove_image(id, None, None).await;
+    }
+    Ok(count)
+}
+
+pub async fn prune_unused_images(docker: &Docker) -> Result<(usize, i64)> {
+    let prune = docker.prune_images::<String>(None).await?;
+    let count = if let Some(ref deleted) = prune.images_deleted {
+        deleted.len()
+    } else {
+        0
+    };
+    let space = prune.space_reclaimed.unwrap_or(0);
+    Ok((count, space))
+}
+
 pub async fn create_container(
     docker: &Docker,
     opts: &ContainerOpts,

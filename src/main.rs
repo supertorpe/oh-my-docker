@@ -221,6 +221,8 @@ fn handle_commands(commands: Vec<Command>, docker: &Option<Docker>, tx: &mpsc::U
                     Command::RestartContainer(id) => tasks::spawn_restart(d.clone(), tx.clone(), id),
                     Command::DeleteContainer(id) => tasks::spawn_delete(d.clone(), tx.clone(), id),
                     Command::RemoveImage(id) => tasks::spawn_remove_image(d.clone(), tx.clone(), id),
+                    Command::RemoveDanglingImages => tasks::spawn_remove_dangling_images(d.clone(), tx.clone()),
+                    Command::PruneUnusedImages => tasks::spawn_prune_unused_images(d.clone(), tx.clone()),
                     Command::CreateContainer(opts) => {
                         tasks::spawn_create_container(d.clone(), tx.clone(), opts);
                     }

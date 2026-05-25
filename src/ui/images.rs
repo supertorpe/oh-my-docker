@@ -331,7 +331,7 @@ fn render_footer(frame: &mut Frame, area: Rect) {
         height: 1,
     };
     frame.render_widget(
-        Paragraph::new(" r  run container  d  remove  /  search  Esc  back ")
+        Paragraph::new(" r  run container  d  remove  D  dangling  p  prune  /  search  Esc  back ")
             .style(Style::default().fg(Color::DarkGray)),
         footer,
     );

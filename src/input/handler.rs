@@ -191,6 +191,14 @@ fn handle_images_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
                         ConfirmAction::RemoveImage(img.id.clone()),
                     ))
             }
+             KeyCode::Char('D') => Some(AppEvent::ShowConfirmDialog(
+                "Remove all dangling (<none>) images?".to_string(),
+                ConfirmAction::RemoveDanglingImages,
+            )),
+            KeyCode::Char('p') => Some(AppEvent::ShowConfirmDialog(
+                "Prune all unused images?".to_string(),
+                ConfirmAction::PruneUnusedImages,
+            )),
             KeyCode::Char('/') => Some(AppEvent::ActivateImageFilter),
             KeyCode::Enter => {
                 state.images.filtered.get(state.images.selected)

@@ -209,7 +209,17 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
                         commands.push(Command::DeleteContainer(id));
                     }
                     ConfirmAction::RemoveImage(id) => {
-                        commands.push(Command::RemoveImage(id));
+                        if id.is_empty() {
+                            commands.push(Command::RemoveDanglingImages);
+                        } else {
+                            commands.push(Command::RemoveImage(id));
+                        }
+                    }
+                    ConfirmAction::RemoveDanglingImages => {
+                        commands.push(Command::RemoveDanglingImages);
+                    }
+                    ConfirmAction::PruneUnusedImages => {
+                        commands.push(Command::PruneUnusedImages);
                     }
                     ConfirmAction::RemoveNetwork(id) => {
                         commands.push(Command::RemoveNetwork(id));
@@ -384,8 +394,14 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             }
             apply_image_filter(&mut new_state);
         }
-        AppEvent::RemoveImage(id) => commands.push(Command::RemoveImage(id)),
-          AppEvent::RunImage(id) => {
+       AppEvent::RemoveImage(id) => commands.push(Command::RemoveImage(id)),
+        AppEvent::RemoveDanglingImages => commands.push(Command::RemoveDanglingImages),
+        AppEvent::PruneUnusedImages => commands.push(Command::PruneUnusedImages),
+        AppEvent::PrunedImages(count) => {
+            new_state.error = Some(format!("Pruned {} unused images", count));
+            new_state.error_timer = 10;
+        }
+        AppEvent::RunImage(id) => {
             new_state.image_run = Some(ImageRunState {
                 image_id: id.clone(),
                 command: String::new(),

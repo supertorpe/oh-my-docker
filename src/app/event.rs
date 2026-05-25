@@ -87,6 +87,8 @@ pub enum ImageRunField {
 pub enum ConfirmAction {
     DeleteContainer(String),
     RemoveImage(String),
+    RemoveDanglingImages,
+    PruneUnusedImages,
     RemoveNetwork(String),
     RemoveVolume(String),
 }
@@ -151,6 +153,9 @@ pub enum AppEvent {
     ActivateImageFilter,
     #[allow(dead_code)]
     RemoveImage(String),
+    RemoveDanglingImages,
+    PruneUnusedImages,
+    PrunedImages(usize),
     RunImage(String),
     ImageRunFieldUpdate(ImageRunField, String),
     ImageRunToggleAutoremove,
@@ -200,6 +205,8 @@ pub enum Command {
     RestartContainer(String),
     DeleteContainer(String),
     RemoveImage(String),
+    RemoveDanglingImages,
+    PruneUnusedImages,
     CreateContainer(ContainerOpts),
     RemoveNetwork(String),
     RemoveVolume(String),

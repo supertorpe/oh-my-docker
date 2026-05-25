@@ -236,22 +236,57 @@ pub fn spawn_network_poller(docker: Docker, tx: UnboundedSender<AppEvent>) {
     });
 }
 
-pub fn spawn_volume_poller(docker: Docker, tx: UnboundedSender<AppEvent>) {
+  pub fn spawn_volume_poller(docker: Docker, tx: UnboundedSender<AppEvent>) {
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(10));
+            loop {
+                interval.tick().await;
+                match docker::volumes::list_volumes(&docker).await {
+                    Ok(volumes) => {
+                        if tx.send(AppEvent::VolumesUpdated(volumes)).is_err() {
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        if tx.send(AppEvent::Info(format!("Volumes: {}", e))).is_err() {
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+pub fn spawn_remove_dangling_images(docker: Docker, tx: UnboundedSender<AppEvent>) {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_secs(10));
-        loop {
-            interval.tick().await;
-            match docker::volumes::list_volumes(&docker).await {
-                Ok(volumes) => {
-                    if tx.send(AppEvent::VolumesUpdated(volumes)).is_err() {
-                        break;
-                    }
-                }
-                Err(e) => {
-                    if tx.send(AppEvent::Info(format!("Volumes: {}", e))).is_err() {
-                        break;
-                    }
-                }
+        match docker::images::remove_dangling_images(&docker).await {
+            Ok(count) => {
+                let _ = tx.send(AppEvent::Info(format!("Removed {} dangling images", count)));
+                let _ = tx.send(AppEvent::PrunedImages(count));
+            }
+            Err(e) => {
+                let _ = tx.send(AppEvent::Error(format!("Remove dangling images failed: {}", e)));
+            }
+        }
+    });
+}
+
+pub fn spawn_prune_unused_images(docker: Docker, tx: UnboundedSender<AppEvent>) {
+    tokio::spawn(async move {
+        match docker::images::prune_unused_images(&docker).await {
+            Ok((count, space)) => {
+                let space_str = if space > 1024 * 1024 * 1024 {
+                    format!("{:.1} GB", space as f64 / (1024.0 * 1024.0 * 1024.0))
+                } else if space > 1024 * 1024 {
+                    format!("{:.1} MB", space as f64 / (1024.0 * 1024.0))
+                } else {
+                    format!("{} KB", space / 1024)
+                };
+                let _ = tx.send(AppEvent::Info(format!("Pruned {} unused images (freed {})", count, space_str)));
+                let _ = tx.send(AppEvent::PrunedImages(count));
+            }
+            Err(e) => {
+                let _ = tx.send(AppEvent::Error(format!("Prune images failed: {}", e)));
             }
         }
     });
