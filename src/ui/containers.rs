@@ -75,13 +75,12 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64) {
 
     let widths = [
         Constraint::Min(15),
-        Constraint::Min(15),
+        Constraint::Min(20),
         Constraint::Length(10),
         Constraint::Fill(1),
-        Constraint::Length(12),
     ];
 
-    let header_cells = ["NAME", "IMAGE", "STATUS", "PORTS", "UPTIME"]
+    let header_cells = ["NAME", "IMAGE", "STATE", "PORTS"]
         .iter()
         .map(|h| Cell::from(*h).style(header_style));
     let header_row = Row::new(header_cells).height(1);
@@ -95,7 +94,7 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64) {
             let is_stopping = state.stopping_containers.contains(&c.id);
             let is_deleting = state.deleting_containers.contains(&c.id);
 
-            let status_color = if is_stopping || is_deleting {
+            let state_color = if is_stopping || is_deleting {
                 Color::Yellow
             } else {
                 match c.state.as_str() {
@@ -105,7 +104,7 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64) {
                 }
             };
 
-            let status_text = if is_stopping {
+            let state_text = if is_stopping {
                 "stopping...".to_string()
             } else if is_deleting {
                 "deleting...".to_string()
@@ -113,25 +112,16 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64) {
                 c.state.clone()
             };
 
-            let uptime_text = if is_deleting {
-                "deleting...".to_string()
-            } else if is_stopping {
-                "stopping...".to_string()
-            } else {
-                c.status.clone()
-            };
-
             let indicator = if is_selected { "▶" } else { " " };
 
             let name_cell = Cell::from(format!("{} {}", indicator, &c.name));
             let image_cell = Cell::from(c.image.clone());
-            let state_cell = Cell::from(status_text).style(Style::default().fg(status_color));
+            let state_cell = Cell::from(state_text).style(Style::default().fg(state_color));
             let ports_cell = Cell::from(c.ports.clone());
-            let uptime_cell = Cell::from(uptime_text);
 
             let row_style = if is_selected { selected_bg } else { Style::default() };
 
-            Row::new(vec![name_cell, image_cell, state_cell, ports_cell, uptime_cell])
+            Row::new(vec![name_cell, image_cell, state_cell, ports_cell])
                 .style(row_style)
                 .height(1)
         })

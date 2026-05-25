@@ -47,7 +47,6 @@ pub async fn list_containers(docker: &Docker) -> Result<Vec<ContainerSummary>> {
                 name,
                 image: c.image.unwrap_or_default(),
                 state: c.state.unwrap_or_default(),
-                status: c.status.unwrap_or_default(),
                 ports,
             }
         })
