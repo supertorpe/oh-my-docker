@@ -171,6 +171,23 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             new_state.error_timer = 5;
         }
 
+        AppEvent::DockerReconnecting => {
+            new_state.containers.docker_reconnecting = true;
+            new_state.containers.loading = true;
+        }
+        AppEvent::DockerReconnected => {
+            new_state.containers.docker_reconnecting = false;
+            new_state.containers.docker_connected = true;
+            new_state.containers.loading = false;
+        }
+        AppEvent::DockerConnectionLost(reason) => {
+            new_state.containers.docker_connected = false;
+            new_state.containers.docker_reconnecting = false;
+            new_state.containers.loading = false;
+            new_state.error = Some(reason);
+            new_state.error_timer = 10;
+        }
+
         AppEvent::ShowConfirmDialog(prompt, action) => {
             new_state.mode_stack.push(Mode::ConfirmDialog { prompt, action });
         }

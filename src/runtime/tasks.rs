@@ -10,16 +10,24 @@ use crate::docker;
 pub fn spawn_container_poller(docker: Docker, tx: UnboundedSender<AppEvent>) {
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(2));
+        let mut consecutive_errors = 0u8;
         loop {
             interval.tick().await;
             match docker::containers::list_containers(&docker).await {
                 Ok(containers) => {
+                    consecutive_errors = 0;
                     if tx.send(AppEvent::ContainersUpdated(containers)).is_err() {
                         break;
                     }
                 }
                 Err(e) => {
-                    if tx.send(AppEvent::Error(format!("Docker: {}", e))).is_err() {
+                    consecutive_errors += 1;
+                    if consecutive_errors >= 3 {
+                        let _ = tx.send(AppEvent::DockerConnectionLost(
+                            format!("Docker connection lost: {}", e),
+                        ));
+                        break;
+                    } else if tx.send(AppEvent::Error(format!("Docker: {}", e))).is_err() {
                         break;
                     }
                 }

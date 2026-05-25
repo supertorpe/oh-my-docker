@@ -15,6 +15,7 @@ pub struct ContainersState {
     pub filter_active: bool,
     pub loading: bool,
     pub docker_connected: bool,
+    pub docker_reconnecting: bool,
     pub stopping_containers: HashSet<String>,
     pub deleting_containers: HashSet<String>,
 }
@@ -29,6 +30,7 @@ impl Default for ContainersState {
             filter_active: false,
             loading: true,
             docker_connected: false,
+            docker_reconnecting: false,
             stopping_containers: HashSet::new(),
             deleting_containers: HashSet::new(),
         }

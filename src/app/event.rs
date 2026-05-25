@@ -107,6 +107,10 @@ pub enum AppEvent {
     ConfirmYes,
     ConfirmNo,
 
+    DockerReconnecting,
+    DockerReconnected,
+    DockerConnectionLost(String),
+
     ContainersUpdated(Vec<ContainerSummary>),
     SelectContainer(usize),
     FilterContainers(String),

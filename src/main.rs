@@ -67,8 +67,34 @@ async fn main() -> Result<()> {
         }
         Err(e) => {
             state.containers.loading = false;
+            state.containers.docker_reconnecting = true;
             state.error = Some(format!("Docker connection failed: {}", e));
             state.error_timer = 10;
+            let tx = event_tx.clone();
+            tokio::spawn(async move {
+                let mut interval = tokio::time::interval(Duration::from_secs(5));
+                loop {
+                    interval.tick().await;
+                    tx.send(app::event::AppEvent::DockerReconnecting).ok();
+                    match docker::client::connect() {
+                        Ok(d) => {
+                            tx.send(app::event::AppEvent::DockerReconnected).ok();
+                            tasks::spawn_container_poller(d.clone(), tx.clone());
+                            tasks::spawn_image_poller(d.clone(), tx.clone());
+                            tasks::spawn_event_streamer(d.clone(), tx.clone());
+                            tasks::spawn_statistics_poller(d.clone(), tx.clone());
+                            tasks::spawn_network_poller(d.clone(), tx.clone());
+                            tasks::spawn_volume_poller(d.clone(), tx.clone());
+                            break;
+                        }
+                        Err(e) => {
+                            tx.send(app::event::AppEvent::DockerConnectionLost(
+                                format!("Reconnect failed: {}", e),
+                            )).ok();
+                        }
+                    }
+                }
+            });
             None
         }
     };

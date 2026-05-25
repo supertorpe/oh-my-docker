@@ -37,9 +37,17 @@ pub fn render(frame: &mut Frame, state: &ContainersState) {
     }
 
     if !state.docker_connected && !state.loading {
+        let (msg, hint) = if state.docker_reconnecting {
+            ("  Docker daemon not available — reconnecting...", "  Waiting for Docker to come back online")
+        } else {
+            ("  Docker daemon not available", "  Start Docker and restart the app")
+        };
+        let color = if state.docker_reconnecting { Color::Yellow } else { Color::Red };
+        let spinner = if state.docker_reconnecting { " ⠋" } else { "" };
         let text = Text::from(vec![
-            Line::from(Span::styled("  Docker daemon not available", Style::default().fg(Color::Red))),
-            Line::from(Span::styled("  Start Docker and restart the app", Style::default().fg(Color::DarkGray))),
+            Line::from(Span::styled(format!("{}{}", spinner, msg), Style::default().fg(color))),
+            Line::from(""),
+            Line::from(Span::styled(hint, Style::default().fg(Color::DarkGray))),
         ]);
         frame.render_widget(Paragraph::new(text).block(block), area);
         return;
