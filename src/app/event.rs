@@ -63,7 +63,6 @@ pub struct VolumeEntry {
     pub name: String,
     pub driver: String,
     pub mountpoint: String,
-    pub size: i64,
 }
 
 #[derive(Clone, Debug)]

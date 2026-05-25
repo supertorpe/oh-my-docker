@@ -14,14 +14,10 @@ pub async fn list_volumes(docker: &Docker) -> Result<Vec<VolumeEntry>> {
         .volumes
         .unwrap_or_default()
         .into_iter()
-        .map(|v| {
-            let size = v.usage_data.as_ref().map(|d| d.size).unwrap_or(-1);
-            VolumeEntry {
-                name: v.name,
-                driver: v.driver,
-                mountpoint: v.mountpoint,
-                size,
-            }
+        .map(|v| VolumeEntry {
+            name: v.name,
+            driver: v.driver,
+            mountpoint: v.mountpoint,
         })
         .collect();
 

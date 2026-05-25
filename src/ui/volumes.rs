@@ -41,10 +41,9 @@ pub fn render(frame: &mut Frame, state: &VolumesState) {
         Constraint::Length(22),
         Constraint::Length(10),
         Constraint::Fill(1),
-        Constraint::Length(10),
     ];
 
-    let header_cells = ["NAME", "DRIVER", "MOUNTPOINT", "SIZE"]
+    let header_cells = ["NAME", "DRIVER", "MOUNTPOINT"]
         .iter()
         .map(|h| Cell::from(*h).style(header_style));
     let header_row = Row::new(header_cells).height(1);
@@ -58,25 +57,10 @@ pub fn render(frame: &mut Frame, state: &VolumesState) {
             let indicator = if is_selected { "▶" } else { " " };
             let row_style = if is_selected { selected_bg } else { Style::default() };
 
-            let size_str = if v.size >= 0 {
-                if v.size > 1_000_000_000 {
-                    format!("{:.1}GB", v.size as f64 / 1_000_000_000.0)
-                } else if v.size > 1_000_000 {
-                    format!("{:.1}MB", v.size as f64 / 1_000_000.0)
-                } else if v.size > 1_000 {
-                    format!("{:.1}KB", v.size as f64 / 1_000.0)
-                } else {
-                    format!("{}B", v.size)
-                }
-            } else {
-                "N/A".to_string()
-            };
-
             Row::new(vec![
                 Cell::from(format!("{} {}", indicator, &v.name)),
                 Cell::from(v.driver.clone()),
                 Cell::from(v.mountpoint.clone()),
-                Cell::from(size_str),
             ])
             .style(row_style)
             .height(1)
