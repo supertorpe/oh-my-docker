@@ -1,4 +1,5 @@
 use bollard::Docker;
+use bollard::network::InspectNetworkOptions;
 use anyhow::Result;
 
 use crate::app::event::NetworkEntry;
@@ -8,42 +9,58 @@ pub async fn remove_network(docker: &Docker, id: &str) -> Result<()> {
 }
 
 pub async fn list_networks(docker: &Docker) -> Result<Vec<NetworkEntry>> {
-    let networks = docker.list_networks::<String>(None::<bollard::network::ListNetworksOptions<String>>).await?;
+    let network_list = docker.list_networks::<String>(None::<bollard::network::ListNetworksOptions<String>>).await?;
 
-    let entries = networks
-        .into_iter()
-        .map(|n| {
-            let id = n.id.unwrap_or_default();
-            let name = n.name.unwrap_or_default();
-            let driver = n.driver.unwrap_or_default();
-            let scope = n.scope.unwrap_or_default();
-            let containers = n.containers.unwrap_or_default().len();
+    let mut entries = Vec::with_capacity(network_list.len());
 
-            let (subnet, gateway) = n
-                .ipam
-                .and_then(|ipam| {
-                    ipam.config.and_then(|config| {
-                        config.first().map(|c| {
-                            (
-                                c.subnet.clone().unwrap_or_default(),
-                                c.gateway.clone().unwrap_or_default(),
-                            )
-                        })
-                    })
-                })
-                .unwrap_or_default();
+    for n in &network_list {
+        let id = n.id.clone().unwrap_or_default();
+        let name = n.name.clone().unwrap_or_default();
+        let driver = n.driver.clone().unwrap_or_default();
+        let scope = n.scope.clone().unwrap_or_default();
 
-            NetworkEntry {
-                id,
-                name,
-                driver,
-                scope,
-                subnet,
-                gateway,
-                containers,
+        let subnet = n.ipam.as_ref()
+            .and_then(|ipam| ipam.config.as_ref())
+            .and_then(|config| config.first())
+            .and_then(|c| c.subnet.as_ref())
+            .cloned()
+            .unwrap_or_default();
+
+        let gateway = n.ipam.as_ref()
+            .and_then(|ipam| ipam.config.as_ref())
+            .and_then(|config| config.first())
+            .and_then(|c| c.gateway.as_ref())
+            .cloned()
+            .unwrap_or_default();
+
+        let containers = if let Some(containers) = &n.containers {
+            containers.len()
+        } else {
+            0
+        };
+
+        entries.push(NetworkEntry {
+            id,
+            name,
+            driver,
+            scope,
+            subnet,
+            gateway,
+            containers,
+        });
+    }
+
+    let network_ids: Vec<String> = entries.iter().map(|e| e.id.clone()).collect();
+
+    for network_id in &network_ids {
+        if let Ok(inspected) = docker.inspect_network(network_id, Some(InspectNetworkOptions::<String>::default())).await {
+            if let Some(ref mut entry) = entries.iter_mut().find(|e| e.id == *network_id) {
+                if let Some(containers) = &inspected.containers {
+                    entry.containers = containers.len();
+                }
             }
-        })
-        .collect();
+        }
+    }
 
     Ok(entries)
 }
