@@ -59,6 +59,7 @@ pub struct LogState {
     pub search_active: bool,
     pub scroll_offset: usize,
     pub tail: bool,
+    pub show_timestamps: bool,
 }
 
 #[derive(Clone, Debug, Default)]

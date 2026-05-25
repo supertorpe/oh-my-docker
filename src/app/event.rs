@@ -19,6 +19,7 @@ pub struct ImageEntry {
 
 #[derive(Clone, Debug)]
 pub struct LogEntry {
+    pub timestamp: String,
     pub message: String,
 }
 
@@ -181,6 +182,7 @@ pub enum AppEvent {
     ToggleEventsPause,
     ExportEvents,
     ScrollEvents(i32),
+    ToggleLogTimestamps,
 
     StatisticsUpdated(Vec<StatEntry>),
     NetworksUpdated(Vec<NetworkEntry>),

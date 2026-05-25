@@ -76,6 +76,7 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
                     search_active: false,
                     scroll_offset: 0,
                     tail: true,
+                    show_timestamps: false,
                 });
                 commands.push(Command::FetchLogs(id.clone()));
             }
@@ -418,6 +419,7 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
                     search_active: false,
                     scroll_offset: 0,
                     tail: true,
+                    show_timestamps: false,
                 });
             }
             if let Some(ref mut log_state) = new_state.logs {
@@ -530,6 +532,11 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             if let Some(ref mut log) = new_state.logs {
                 log.scroll_offset = 0;
                 log.tail = true;
+            }
+        }
+        AppEvent::ToggleLogTimestamps => {
+            if let Some(ref mut log) = new_state.logs {
+                log.show_timestamps = !log.show_timestamps;
             }
         }
         AppEvent::ExportLogs(container_id) => {

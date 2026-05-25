@@ -49,7 +49,7 @@ pub async fn stream_logs(docker: Docker, id: String, tx: UnboundedSender<AppEven
                         latest = latest.max(epoch);
                     }
 
-                    batch.push(LogEntry { message });
+                    batch.push(LogEntry { timestamp: ts_str, message });
                 }
                 Err(e) => {
                     let _ = tx.send(AppEvent::Info(format!("Log poll error: {}", e)));

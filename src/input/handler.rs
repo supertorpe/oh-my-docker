@@ -187,6 +187,7 @@ fn handle_logs_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
             KeyCode::Char('g') => Some(AppEvent::JumpTop),
             KeyCode::Char('G') => Some(AppEvent::JumpBottom),
             KeyCode::Char('s') => state.logs.as_ref().map(|l| AppEvent::ExportLogs(l.container_id.clone())),
+            KeyCode::Char('T') => Some(AppEvent::ToggleLogTimestamps),
             KeyCode::Up | KeyCode::Char('k') => Some(AppEvent::ScrollLogs(1)),
             KeyCode::Down | KeyCode::Char('j') => Some(AppEvent::ScrollLogs(-1)),
             KeyCode::PageUp => Some(AppEvent::ScrollLogs(20)),
