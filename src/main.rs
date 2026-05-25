@@ -31,6 +31,23 @@ async fn main() -> Result<()> {
         println!("omdocker v{}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
+    if args.iter().any(|a| a == "--help" || a == "-h") {
+        println!("omdocker — Terminal UI for Docker\n");
+        println!("USAGE:");
+        println!("    omdocker [OPTIONS] [FILTER]");
+        println!();
+        println!("OPTIONS:");
+        println!("    -h, --help       Print this help message");
+        println!("    -V, --version    Print version information");
+        println!();
+        println!("FILTER:");
+        println!("    Optional initial container name filter");
+        println!();
+        println!("INTERACTIVE KEYS:");
+        println!("    ?    Show full help inside the TUI");
+        println!("    q    Quit");
+        return Ok(());
+    }
 
     let mut config = config::OmdockerConfig::load();
     if config.check_updates.is_none() {
