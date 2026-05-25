@@ -389,7 +389,7 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             new_state.image_run = Some(ImageRunState {
                 image_id: id.clone(),
                 command: String::new(),
-                shell: "sh".to_string(),
+                shell: "bash".to_string(),
                 user: String::new(),
                 workdir: String::new(),
                 env_vars: String::new(),

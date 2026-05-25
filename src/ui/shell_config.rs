@@ -67,8 +67,8 @@ pub fn render(frame: &mut Frame, config: &ShellConfigState) {
         1 => "Empty = container default | host = current host user | root | user:group",
         _ => "Empty = container default | / = root | or a custom path like /app",
     };
-    let val_style = if config.field_focus == 0 && config.shell.is_empty() {
-        Some("sh")
+    let val_style =    if config.field_focus == 0 && config.shell.is_empty() {
+        Some("bash")
     } else if (config.field_focus == 1 && config.user.is_empty()) || (config.field_focus == 2 && config.workdir.is_empty()) {
         Some("(default)")
     } else {
