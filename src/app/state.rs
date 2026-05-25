@@ -93,6 +93,8 @@ pub struct EventsState {
     pub max_events: usize,
     pub filter: String,
     pub filter_active: bool,
+    pub scroll_offset: usize,
+    pub paused: bool,
 }
 
 impl Default for EventsState {
@@ -102,6 +104,8 @@ impl Default for EventsState {
             max_events: 10000,
             filter: String::new(),
             filter_active: false,
+            scroll_offset: 0,
+            paused: false,
         }
     }
 }

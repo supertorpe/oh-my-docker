@@ -178,6 +178,9 @@ pub enum AppEvent {
     ActivateEventsFilter,
     EventsFilterSubmit,
     FilterEvents(String),
+    ToggleEventsPause,
+    ExportEvents,
+    ScrollEvents(i32),
 
     StatisticsUpdated(Vec<StatEntry>),
     NetworksUpdated(Vec<NetworkEntry>),

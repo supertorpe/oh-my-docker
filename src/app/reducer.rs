@@ -552,7 +552,7 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
         }
 
         // --- Events ---
-        AppEvent::EventsUpdated(events) => {
+       AppEvent::EventsUpdated(events) => {
             for e in events {
                 new_state.events.buffer.push(e);
             }
@@ -561,7 +561,35 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
                 new_state.events.buffer.drain(0..excess);
             }
         }
-          AppEvent::CloseShell => {
+        AppEvent::ToggleEventsPause => {
+            new_state.events.paused = !new_state.events.paused;
+        }
+        AppEvent::ExportEvents => {
+            let buffer: Vec<String> = new_state.events.buffer.iter().map(|e| {
+                format!("{} {} {} {}", e.timestamp, e.kind, e.action, e.actor)
+            }).collect();
+            if buffer.is_empty() {
+                new_state.error = Some("No events to export".to_string());
+                new_state.error_timer = 5;
+            } else {
+                let ts = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                let filename = format!("/tmp/omdocker_events_{}.log", ts);
+                let fname = filename.clone();
+                let lines = buffer.clone();
+                commands.push(Command::ExportLogs(fname, lines));
+            }
+        }
+        AppEvent::ScrollEvents(delta) => {
+            if delta > 0 {
+                new_state.events.scroll_offset = new_state.events.scroll_offset.saturating_add(delta as usize);
+            } else {
+                new_state.events.scroll_offset = new_state.events.scroll_offset.saturating_sub((-delta) as usize);
+            }
+        }
+        AppEvent::CloseShell => {
             let shell_data = new_state.shell.take();
             new_state.mode_stack.back();
             if let Some(s) = shell_data {
