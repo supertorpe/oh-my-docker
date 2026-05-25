@@ -205,8 +205,33 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
                 new_state.mode_stack.back();
                 match action {
                     ConfirmAction::DeleteContainer(id) => {
-                        new_state.containers.deleting_containers.insert(id.clone());
-                        commands.push(Command::DeleteContainer(id));
+                        if id.is_empty() {
+                            if !new_state.containers.selected_ids.is_empty() {
+                                let ids: Vec<String> = new_state.containers.selected_ids.iter().cloned().collect();
+                                new_state.containers.selected_ids.clear();
+                                new_state.containers.selection_mode = false;
+                                commands.push(Command::BatchDeleteContainers(ids));
+                            }
+                        } else {
+                            new_state.containers.deleting_containers.insert(id.clone());
+                            commands.push(Command::DeleteContainer(id));
+                        }
+                    }
+                    ConfirmAction::BatchStopContainers => {
+                        if !new_state.containers.selected_ids.is_empty() {
+                            let ids: Vec<String> = new_state.containers.selected_ids.iter().cloned().collect();
+                            new_state.containers.selected_ids.clear();
+                            new_state.containers.selection_mode = false;
+                            commands.push(Command::BatchStopContainers(ids));
+                        }
+                    }
+                    ConfirmAction::BatchDeleteContainers => {
+                        if !new_state.containers.selected_ids.is_empty() {
+                            let ids: Vec<String> = new_state.containers.selected_ids.iter().cloned().collect();
+                            new_state.containers.selected_ids.clear();
+                            new_state.containers.selection_mode = false;
+                            commands.push(Command::BatchDeleteContainers(ids));
+                        }
                     }
                     ConfirmAction::RemoveImage(id) => {
                         if id.is_empty() {
@@ -324,8 +349,47 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             new_state.containers.deleting_containers.insert(id.clone());
             commands.push(Command::DeleteContainer(id));
         }
-        AppEvent::ContainerDeleted(id) => {
+     AppEvent::ContainerDeleted(id) => {
             new_state.containers.deleting_containers.remove(&id);
+        }
+        AppEvent::ToggleSelectionMode => {
+            new_state.containers.selection_mode = !new_state.containers.selection_mode;
+            if !new_state.containers.selection_mode {
+                new_state.containers.selected_ids.clear();
+            }
+        }
+        AppEvent::ToggleSelectContainer(id) => {
+            if new_state.containers.selection_mode {
+                if new_state.containers.selected_ids.contains(&id) {
+                    new_state.containers.selected_ids.remove(&id);
+                } else {
+                    new_state.containers.selected_ids.insert(id);
+                }
+            }
+        }
+        AppEvent::SelectAllContainers => {
+            if new_state.containers.selection_mode {
+                for &idx in &new_state.containers.filtered {
+                    if let Some(c) = new_state.containers.items.get(idx) {
+                        new_state.containers.selected_ids.insert(c.id.clone());
+                    }
+                }
+            }
+        }
+        AppEvent::DeselectAllContainers => {
+            new_state.containers.selected_ids.clear();
+        }
+        AppEvent::BatchStopContainers(ids) => {
+            for id in &ids {
+                new_state.containers.stopping_containers.insert(id.clone());
+                commands.push(Command::StopContainer(id.clone()));
+            }
+        }
+        AppEvent::BatchDeleteContainers(ids) => {
+            for id in &ids {
+                new_state.containers.deleting_containers.insert(id.clone());
+                commands.push(Command::DeleteContainer(id.clone()));
+            }
         }
         AppEvent::ScrollDetails(delta) => {
             if let Some(ref mut d) = new_state.details {

@@ -13,6 +13,8 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64) {
         " CONTAINERS (loading...) ".to_string()
     } else if !state.filter.is_empty() {
         format!(" CONTAINERS ({}) FILTER '{}' ", state.filtered.len(), state.filter)
+    } else if state.selection_mode && !state.selected_ids.is_empty() {
+        format!(" CONTAINERS ({}) [{}] ", state.filtered.len(), state.selected_ids.len())
     } else {
         format!(" CONTAINERS ({}) ", state.filtered.len())
     };
@@ -73,17 +75,31 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64) {
         .add_modifier(Modifier::BOLD);
     let selected_bg = Style::default().bg(Color::Blue).fg(Color::White);
 
-    let widths = [
-        Constraint::Min(15),
-        Constraint::Min(20),
-        Constraint::Length(10),
-        Constraint::Fill(1),
-    ];
+    let widths = if state.selection_mode {
+        vec![
+            Constraint::Length(3),
+            Constraint::Min(12),
+            Constraint::Min(20),
+            Constraint::Length(10),
+            Constraint::Fill(1),
+        ]
+    } else {
+        vec![
+            Constraint::Min(15),
+            Constraint::Min(20),
+            Constraint::Length(10),
+            Constraint::Fill(1),
+        ]
+    };
 
-    let header_cells = ["NAME", "IMAGE", "STATE", "PORTS"]
-        .iter()
-        .map(|h| Cell::from(*h).style(header_style));
-    let header_row = Row::new(header_cells).height(1);
+    let header_cells: [&str; 5] = if state.selection_mode {
+        ["", "NAME", "IMAGE", "STATE", "PORTS"]
+    } else {
+        ["NAME", "IMAGE", "STATE", "PORTS", ""]
+    };
+    let header_row = Row::new(
+        header_cells.iter().map(|h| Cell::from(*h).style(header_style))
+    ).height(1);
 
    let rows: Vec<Row> = state
         .filtered
@@ -93,6 +109,7 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64) {
             let is_selected = state.filtered.get(state.selected) == Some(&idx);
             let is_stopping = state.stopping_containers.contains(&c.id);
             let is_deleting = state.deleting_containers.contains(&c.id);
+            let is_id_selected = state.selected_ids.contains(&c.id);
 
             let state_color = if is_stopping || is_deleting {
                 Color::Yellow
@@ -114,14 +131,27 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64) {
 
             let indicator = if is_selected { "▶" } else { " " };
 
-            let name_cell = Cell::from(format!("{} {}", indicator, &c.name));
-            let image_cell = Cell::from(c.image.clone());
-            let state_cell = Cell::from(state_text).style(Style::default().fg(state_color));
-            let ports_cell = Cell::from(c.ports.clone());
+            let cells: Vec<Cell> = if state.selection_mode {
+                let check = if is_id_selected { "[x]" } else { "[ ]" };
+                vec![
+                    Cell::from(check),
+                    Cell::from(format!("{} {}", indicator, &c.name)),
+                    Cell::from(c.image.clone()),
+                    Cell::from(state_text).style(Style::default().fg(state_color)),
+                    Cell::from(c.ports.clone()),
+                ]
+            } else {
+                vec![
+                    Cell::from(format!("{} {}", indicator, &c.name)),
+                    Cell::from(c.image.clone()),
+                    Cell::from(state_text).style(Style::default().fg(state_color)),
+                    Cell::from(c.ports.clone()),
+                ]
+            };
 
             let row_style = if is_selected { selected_bg } else { Style::default() };
 
-            Row::new(vec![name_cell, image_cell, state_cell, ports_cell])
+            Row::new(cells)
                 .style(row_style)
                 .height(1)
         })
@@ -138,19 +168,23 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64) {
         crate::ui::render_filter_bar(frame, inner, &state.filter, "search");
     }
 
-    render_footer(frame, area);
+    render_footer(frame, area, state.selection_mode);
 }
 
-fn render_footer(frame: &mut Frame, area: Rect) {
+fn render_footer(frame: &mut Frame, area: Rect, selection_mode: bool) {
     let footer = Rect {
         x: area.x,
         y: area.height.saturating_sub(1),
         width: area.width,
         height: 1,
     };
+    let text = if selection_mode {
+        " Space:toggle/select  a:all  t:stop  d:delete  Esc:exit mode  j/k ↓↑  /search  Enter:details  l:logs  s:shell  ?:help "
+    } else {
+        " Space:select mode  j/k ↓↑  /search  Enter:details  l:logs  s:shell  r:restart  t:stop/start  d:delete  ?:help "
+    };
     frame.render_widget(
-        Paragraph::new(" j/k ↓↑  /search  Enter:details  l:logs  s:shell  r:restart  t:stop/start  d:delete  ?:help ")
-            .style(Style::default().fg(Color::DarkGray)),
+        Paragraph::new(text).style(Style::default().fg(Color::DarkGray)),
         footer,
     );
 }

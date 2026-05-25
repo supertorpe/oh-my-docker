@@ -86,6 +86,8 @@ pub enum ImageRunField {
 #[derive(Clone, Debug)]
 pub enum ConfirmAction {
     DeleteContainer(String),
+    BatchStopContainers,
+    BatchDeleteContainers,
     RemoveImage(String),
     RemoveDanglingImages,
     PruneUnusedImages,
@@ -128,6 +130,12 @@ pub enum AppEvent {
     ShowDetails,
     Inspected(serde_json::Value, String),
     ScrollDetails(i32),
+    ToggleSelectionMode,
+    ToggleSelectContainer(String),
+    SelectAllContainers,
+    DeselectAllContainers,
+    BatchStopContainers(Vec<String>),
+    BatchDeleteContainers(Vec<String>),
 
     LogLines(String, Vec<LogEntry>),
     TogglePause,
@@ -210,6 +218,8 @@ pub enum Command {
     CreateContainer(ContainerOpts),
     RemoveNetwork(String),
     RemoveVolume(String),
+    BatchStopContainers(Vec<String>),
+    BatchDeleteContainers(Vec<String>),
     SaveConfig,
     CheckUpdate,
     DownloadUpdate { version: String, download_url: String },

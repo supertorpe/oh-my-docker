@@ -291,3 +291,41 @@ pub fn spawn_prune_unused_images(docker: Docker, tx: UnboundedSender<AppEvent>) 
         }
     });
 }
+
+pub fn spawn_batch_stop_containers(docker: Docker, tx: UnboundedSender<AppEvent>, ids: Vec<String>) {
+    tokio::spawn(async move {
+        let mut stopped = 0u32;
+        let total = ids.len();
+        for id in &ids {
+            match docker::containers::stop_container(&docker, id).await {
+                Ok(()) => {
+                    stopped += 1;
+                    let _ = tx.send(AppEvent::ContainerStopped(id.clone()));
+                }
+                Err(e) => {
+                    let _ = tx.send(AppEvent::Error(format!("Stop {} failed: {}", &id[..12.min(id.len())], e)));
+                }
+            }
+        }
+        let _ = tx.send(AppEvent::Info(format!("Stopped {}/{} containers", stopped, total)));
+    });
+}
+
+pub fn spawn_batch_delete_containers(docker: Docker, tx: UnboundedSender<AppEvent>, ids: Vec<String>) {
+    tokio::spawn(async move {
+        let mut deleted = 0u32;
+        let total = ids.len();
+        for id in &ids {
+            match docker::containers::delete_container(&docker, id).await {
+                Ok(()) => {
+                    deleted += 1;
+                    let _ = tx.send(AppEvent::ContainerDeleted(id.clone()));
+                }
+                Err(e) => {
+                    let _ = tx.send(AppEvent::Error(format!("Delete {} failed: {}", &id[..12.min(id.len())], e)));
+                }
+            }
+        }
+        let _ = tx.send(AppEvent::Info(format!("Deleted {}/{} containers", deleted, total)));
+    });
+}

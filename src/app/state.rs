@@ -18,6 +18,8 @@ pub struct ContainersState {
     pub docker_reconnecting: bool,
     pub stopping_containers: HashSet<String>,
     pub deleting_containers: HashSet<String>,
+    pub selection_mode: bool,
+    pub selected_ids: HashSet<String>,
 }
 
 impl Default for ContainersState {
@@ -33,6 +35,8 @@ impl Default for ContainersState {
             docker_reconnecting: false,
             stopping_containers: HashSet::new(),
             deleting_containers: HashSet::new(),
+            selection_mode: false,
+            selected_ids: HashSet::new(),
         }
     }
 }

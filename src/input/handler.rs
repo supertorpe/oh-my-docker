@@ -54,22 +54,73 @@ fn handle_containers_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
                     .and_then(|&idx| state.containers.items.get(idx))
                     .map(|c| AppEvent::RestartContainer(c.id.clone()))
             }
-            KeyCode::Char('t') => {
-                state.containers.filtered.get(state.containers.selected)
-                    .and_then(|&idx| state.containers.items.get(idx))
-                    .map(|c| if c.state == "running" {
-                        AppEvent::StopContainer(c.id.clone())
+             KeyCode::Char('t') => {
+                if state.containers.selection_mode {
+                    let ids: Vec<String> = state.containers.selected_ids.iter().cloned().collect();
+                    if ids.is_empty() {
+                        state.containers.filtered.get(state.containers.selected)
+                            .and_then(|&idx| state.containers.items.get(idx))
+                            .map(|c| if c.state == "running" {
+                                AppEvent::StopContainer(c.id.clone())
+                            } else {
+                                AppEvent::StartContainer(c.id.clone())
+                            })
                     } else {
-                        AppEvent::StartContainer(c.id.clone())
-                    })
+                        Some(AppEvent::ShowConfirmDialog(
+                            format!("Stop {} selected container(s)?", ids.len()),
+                            ConfirmAction::BatchStopContainers,
+                        ))
+                    }
+                } else {
+                    state.containers.filtered.get(state.containers.selected)
+                        .and_then(|&idx| state.containers.items.get(idx))
+                        .map(|c| if c.state == "running" {
+                            AppEvent::StopContainer(c.id.clone())
+                        } else {
+                            AppEvent::StartContainer(c.id.clone())
+                        })
+                }
             }
             KeyCode::Char('d') => {
-                state.containers.filtered.get(state.containers.selected)
-                    .and_then(|&idx| state.containers.items.get(idx))
-                    .map(|c| AppEvent::ShowConfirmDialog(
-                        format!("Delete container '{}'?", c.name),
-                        ConfirmAction::DeleteContainer(c.id.clone()),
-                    ))
+                if state.containers.selection_mode {
+                    let ids: Vec<String> = state.containers.selected_ids.iter().cloned().collect();
+                    if ids.is_empty() {
+                        state.containers.filtered.get(state.containers.selected)
+                            .and_then(|&idx| state.containers.items.get(idx))
+                            .map(|c| AppEvent::ShowConfirmDialog(
+                                format!("Delete container '{}'?", c.name),
+                                ConfirmAction::DeleteContainer(c.id.clone()),
+                            ))
+                    } else {
+                        Some(AppEvent::ShowConfirmDialog(
+                            format!("Delete {} selected container(s)?", ids.len()),
+                            ConfirmAction::BatchDeleteContainers,
+                        ))
+                    }
+                } else {
+                    state.containers.filtered.get(state.containers.selected)
+                        .and_then(|&idx| state.containers.items.get(idx))
+                        .map(|c| AppEvent::ShowConfirmDialog(
+                            format!("Delete container '{}'?", c.name),
+                            ConfirmAction::DeleteContainer(c.id.clone()),
+                        ))
+                }
+            }
+            KeyCode::Char(' ') => {
+                if !state.containers.selection_mode {
+                    Some(AppEvent::ToggleSelectionMode)
+                } else {
+                    state.containers.filtered.get(state.containers.selected)
+                        .and_then(|&idx| state.containers.items.get(idx))
+                        .map(|c| AppEvent::ToggleSelectContainer(c.id.clone()))
+                }
+            }
+            KeyCode::Char('a') if key.modifiers == KeyModifiers::CONTROL => {
+                if state.containers.selection_mode {
+                    Some(AppEvent::SelectAllContainers)
+                } else {
+                    None
+                }
             }
             KeyCode::Char('i') => Some(AppEvent::Navigate(Mode::Images)),
             KeyCode::Char('e') => Some(AppEvent::Navigate(Mode::Events)),
