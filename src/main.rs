@@ -243,7 +243,7 @@ fn handle_commands(commands: Vec<Command>, docker: &Option<Docker>, tx: &mpsc::U
                             }
                         });
                     }
-                    _ => {}
+                    _ => unreachable!(),
                 }
             }
         }

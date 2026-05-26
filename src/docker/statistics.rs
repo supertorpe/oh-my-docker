@@ -80,7 +80,6 @@ pub async fn list_statistics(docker: &Docker) -> Result<Vec<StatEntry>> {
                 .unwrap_or(0);
 
             entries.push(StatEntry {
-                container_id: id,
                 name,
                 cpu_percent,
                 memory_usage,

@@ -34,8 +34,6 @@ pub struct DockerEvent {
 
 #[derive(Clone, Debug)]
 pub struct StatEntry {
-    #[allow(dead_code)]
-    pub container_id: String,
     pub name: String,
     pub cpu_percent: f64,
     pub memory_usage: u64,
@@ -96,7 +94,6 @@ pub enum ConfirmAction {
     RemoveVolume(String),
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub enum AppEvent {
     Navigate(Mode),
@@ -127,8 +124,6 @@ pub enum AppEvent {
     ContainerStopped(String),
     ContainerStarted(String),
     StartContainer(String),
-    #[allow(dead_code)]
-    DeleteContainer(String),
     ContainerDeleted(String),
     ShowDetails,
     Inspected(serde_json::Value, String),
@@ -136,9 +131,7 @@ pub enum AppEvent {
     ToggleSelectionMode,
     ToggleSelectContainer(String),
     SelectAllContainers,
-    DeselectAllContainers,
     BatchToggleContainers(Vec<String>),
-    BatchDeleteContainers(Vec<String>),
 
     LogLines(String, Vec<LogEntry>),
     TogglePause,
@@ -162,10 +155,6 @@ pub enum AppEvent {
     SelectImage(usize),
     FilterImages(String),
     ActivateImageFilter,
-    #[allow(dead_code)]
-    RemoveImage(String),
-    RemoveDanglingImages,
-    PruneUnusedImages,
     PrunedImages(usize),
     RunImage(String, String),
     ImageRunFieldUpdate(ImageRunField, String),
@@ -188,12 +177,8 @@ pub enum AppEvent {
     StatisticsUpdated(Vec<StatEntry>),
     NetworksUpdated(Vec<NetworkEntry>),
     SelectNetwork(usize),
-    #[allow(dead_code)]
-    RemoveNetwork(String),
     VolumesUpdated(Vec<VolumeEntry>),
     SelectVolume(usize),
-    #[allow(dead_code)]
-    RemoveVolume(String),
 
     CycleSortStat(i32),
     ToggleSortDirection,

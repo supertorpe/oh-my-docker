@@ -343,11 +343,7 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             new_state.containers.starting_containers.remove(&id);
         }
         AppEvent::StartContainer(id) => commands.push(Command::StartContainer(id)),
-        AppEvent::DeleteContainer(id) => {
-            new_state.containers.deleting_containers.insert(id.clone());
-            commands.push(Command::DeleteContainer(id));
-        }
-     AppEvent::ContainerDeleted(id) => {
+        AppEvent::ContainerDeleted(id) => {
             new_state.containers.deleting_containers.remove(&id);
         }
         AppEvent::ToggleSelectionMode => {
@@ -374,9 +370,6 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
                 }
             }
         }
-        AppEvent::DeselectAllContainers => {
-            new_state.containers.selected_ids.clear();
-        }
         AppEvent::BatchToggleContainers(ids) => {
             for id in &ids {
                 let is_running = new_state.containers.items.iter()
@@ -390,12 +383,6 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
                 }
             }
             commands.push(Command::BatchToggleContainers(ids));
-        }
-        AppEvent::BatchDeleteContainers(ids) => {
-            for id in &ids {
-                new_state.containers.deleting_containers.insert(id.clone());
-                commands.push(Command::DeleteContainer(id.clone()));
-            }
         }
         AppEvent::ScrollDetails(delta) => {
             if let Some(ref mut d) = new_state.details {
@@ -466,9 +453,6 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             }
             apply_image_filter(&mut new_state);
         }
-       AppEvent::RemoveImage(id) => commands.push(Command::RemoveImage(id)),
-        AppEvent::RemoveDanglingImages => commands.push(Command::RemoveDanglingImages),
-        AppEvent::PruneUnusedImages => commands.push(Command::PruneUnusedImages),
         AppEvent::PrunedImages(count) => {
             new_state.error = Some(format!("Pruned {} unused images", count));
             new_state.error_timer = 10;
@@ -834,8 +818,6 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
                 new_state.networks.selected = idx;
             }
         }
-        AppEvent::RemoveNetwork(id) => commands.push(Command::RemoveNetwork(id)),
-
         // --- Volumes ---
         AppEvent::VolumesUpdated(volumes) => {
             new_state.volumes.items = volumes;
@@ -846,7 +828,6 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
                 new_state.volumes.selected = idx;
             }
         }
-        AppEvent::RemoveVolume(name) => commands.push(Command::RemoveVolume(name)),
     }
 
     (new_state, commands)
