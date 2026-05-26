@@ -18,6 +18,82 @@ pub struct PollingIntervals {
     pub volumes_ms: u64,
 }
 
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct ContainerColumns {
+    pub show_name: bool,
+    pub show_image: bool,
+    pub show_state: bool,
+    pub show_ports: bool,
+}
+
+impl Default for ContainerColumns {
+    fn default() -> Self {
+        Self {
+            show_name: true,
+            show_image: true,
+            show_state: true,
+            show_ports: true,
+        }
+    }
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct ImageColumns {
+    pub show_repository: bool,
+    pub show_tag: bool,
+    pub show_id: bool,
+    pub show_size: bool,
+}
+
+impl Default for ImageColumns {
+    fn default() -> Self {
+        Self {
+            show_repository: true,
+            show_tag: true,
+            show_id: true,
+            show_size: true,
+        }
+    }
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct NetworkColumns {
+    pub show_name: bool,
+    pub show_id: bool,
+    pub show_driver: bool,
+    pub show_scope: bool,
+    pub show_ipam: bool,
+}
+
+impl Default for NetworkColumns {
+    fn default() -> Self {
+        Self {
+            show_name: true,
+            show_id: true,
+            show_driver: true,
+            show_scope: true,
+            show_ipam: true,
+        }
+    }
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct VolumeColumns {
+    pub show_name: bool,
+    pub show_driver: bool,
+    pub show_mountpoint: bool,
+}
+
+impl Default for VolumeColumns {
+    fn default() -> Self {
+        Self {
+            show_name: true,
+            show_driver: true,
+            show_mountpoint: true,
+        }
+    }
+}
+
 impl Default for PollingIntervals {
     fn default() -> Self {
         Self {
@@ -187,6 +263,14 @@ pub struct OmdockerConfig {
     pub keybindings: Keybindings,
     #[serde(default)]
     pub polling: PollingIntervals,
+    #[serde(default)]
+    pub container_columns: ContainerColumns,
+    #[serde(default)]
+    pub image_columns: ImageColumns,
+    #[serde(default)]
+    pub network_columns: NetworkColumns,
+    #[serde(default)]
+    pub volume_columns: VolumeColumns,
 }
 
 impl OmdockerConfig {
@@ -204,6 +288,10 @@ impl Default for OmdockerConfig {
             check_updates: None,
             keybindings: Keybindings::default(),
             polling: PollingIntervals::default(),
+            container_columns: ContainerColumns::default(),
+            image_columns: ImageColumns::default(),
+            network_columns: NetworkColumns::default(),
+            volume_columns: VolumeColumns::default(),
         }
     }
 }

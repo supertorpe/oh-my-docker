@@ -6,7 +6,7 @@ use ratatui::widgets::{Block, Borders, Cell, Paragraph, BorderType, Row, Table, 
 
 use crate::app::state::NetworksState;
 
-pub fn render(frame: &mut Frame, state: &NetworksState) {
+pub fn render(frame: &mut Frame, state: &NetworksState, columns: &crate::config::NetworkColumns) {
     let area = frame.area();
 
     let (indicator_char, indicator_color) = if state.loading {
@@ -53,19 +53,37 @@ pub fn render(frame: &mut Frame, state: &NetworksState) {
         .add_modifier(Modifier::BOLD);
     let selected_bg = Style::default().bg(Color::Blue).fg(Color::White);
 
-    let widths = [
-        Constraint::Length(22),
-        Constraint::Length(10),
-        Constraint::Length(8),
-        Constraint::Length(18),
-        Constraint::Length(18),
-        Constraint::Length(10),
-    ];
+    let mut widths = Vec::new();
+    let mut header_cells = Vec::new();
 
-    let header_cells = ["NAME", "DRIVER", "SCOPE", "SUBNET", "GATEWAY", "CONTAINERS"]
-        .iter()
-        .map(|h| Cell::from(*h).style(header_style));
-    let header_row = Row::new(header_cells).height(1);
+    if columns.show_name {
+        widths.push(Constraint::Length(22));
+        header_cells.push("NAME");
+    }
+    if columns.show_id {
+        widths.push(Constraint::Length(10));
+        header_cells.push("ID");
+    }
+    if columns.show_driver {
+        widths.push(Constraint::Length(10));
+        header_cells.push("DRIVER");
+    }
+    if columns.show_scope {
+        widths.push(Constraint::Length(8));
+        header_cells.push("SCOPE");
+    }
+    if columns.show_ipam {
+        widths.push(Constraint::Length(18));
+        header_cells.push("SUBNET");
+        widths.push(Constraint::Length(18));
+        header_cells.push("GATEWAY");
+    }
+    widths.push(Constraint::Length(10));
+    header_cells.push("CONTAINERS");
+
+    let header_row = Row::new(
+        header_cells.iter().map(|h| Cell::from(*h).style(header_style))
+    ).height(1);
 
     let rows: Vec<Row> = state
         .items
@@ -75,16 +93,29 @@ pub fn render(frame: &mut Frame, state: &NetworksState) {
             let is_selected = state.selected == idx;
             let indicator = if is_selected { "▶" } else { " " };
             let row_style = if is_selected { selected_bg } else { Style::default() };
-            Row::new(vec![
-                Cell::from(format!("{} {}", indicator, &n.name)),
-                Cell::from(n.driver.clone()),
-                Cell::from(n.scope.clone()),
-                Cell::from(n.subnet.clone()),
-                Cell::from(n.gateway.clone()),
-                Cell::from(n.containers.to_string()),
-            ])
-            .style(row_style)
-            .height(1)
+
+            let mut cells: Vec<Cell> = Vec::new();
+            if columns.show_name {
+                cells.push(Cell::from(format!("{} {}", indicator, &n.name)));
+            }
+            if columns.show_id {
+                cells.push(Cell::from(n.id[..12.min(n.id.len())].to_string()));
+            }
+            if columns.show_driver {
+                cells.push(Cell::from(n.driver.clone()));
+            }
+            if columns.show_scope {
+                cells.push(Cell::from(n.scope.clone()));
+            }
+            if columns.show_ipam {
+                cells.push(Cell::from(n.subnet.clone()));
+                cells.push(Cell::from(n.gateway.clone()));
+            }
+            cells.push(Cell::from(n.containers.to_string()));
+
+            Row::new(cells)
+                .style(row_style)
+                .height(1)
         })
         .collect();
 

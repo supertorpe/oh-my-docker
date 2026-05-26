@@ -7,6 +7,7 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Cell, Paragraph, BorderType, Row, Table, TableState};
 
 use crate::app::state::ContainersState;
+use crate::config::ContainerColumns;
 
 fn staleness_indicator(last_updated: Option<std::time::Instant>, interval_ms: u64) -> (char, Color) {
     let threshold_fresh = Duration::from_millis(interval_ms * 2);
@@ -27,7 +28,7 @@ fn staleness_indicator(last_updated: Option<std::time::Instant>, interval_ms: u6
     }
 }
 
-pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64) {
+pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64, columns: &ContainerColumns) {
     let area = frame.area();
 
     let (indicator_char, indicator_color) = if state.loading {
@@ -104,28 +105,31 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64) {
         .add_modifier(Modifier::BOLD);
     let selected_bg = Style::default().bg(Color::Blue).fg(Color::White);
 
-    let widths = if state.selection_mode {
-        vec![
-            Constraint::Length(3),
-            Constraint::Min(12),
-            Constraint::Min(12),
-            Constraint::Min(16),
-            Constraint::Fill(1),
-        ]
-    } else {
-        vec![
-            Constraint::Min(15),
-            Constraint::Min(14),
-            Constraint::Min(16),
-            Constraint::Fill(1),
-        ]
-    };
+    let mut widths = Vec::new();
+    let mut header_cells = Vec::new();
 
-    let header_cells: [&str; 5] = if state.selection_mode {
-        ["", "NAME", "IMAGE", "STATE", "PORTS"]
-    } else {
-        ["NAME", "IMAGE", "STATE", "PORTS", ""]
-    };
+    if state.selection_mode {
+        widths.push(Constraint::Length(3));
+        header_cells.push("");
+    }
+
+    if columns.show_name {
+        widths.push(Constraint::Min(15));
+        header_cells.push("NAME");
+    }
+    if columns.show_image {
+        widths.push(Constraint::Min(14));
+        header_cells.push("IMAGE");
+    }
+    if columns.show_state {
+        widths.push(Constraint::Min(16));
+        header_cells.push("STATE");
+    }
+    if columns.show_ports {
+        widths.push(Constraint::Fill(1));
+        header_cells.push("PORTS");
+    }
+
     let header_row = Row::new(
         header_cells.iter().map(|h| Cell::from(*h).style(header_style))
     ).height(1);
@@ -163,23 +167,23 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64) {
 
             let indicator = if is_selected { "▶" } else { " " };
 
-            let cells: Vec<Cell> = if state.selection_mode {
+            let mut cells: Vec<Cell> = Vec::new();
+            if state.selection_mode {
                 let check = if is_id_selected { "[x]" } else { "[ ]" };
-                vec![
-                    Cell::from(check),
-                    Cell::from(format!("{} {}", indicator, &c.name)),
-                    Cell::from(c.image.clone()),
-                    Cell::from(state_text).style(Style::default().fg(state_color)),
-                    Cell::from(c.ports.clone()),
-                ]
-            } else {
-                vec![
-                    Cell::from(format!("{} {}", indicator, &c.name)),
-                    Cell::from(c.image.clone()),
-                    Cell::from(state_text).style(Style::default().fg(state_color)),
-                    Cell::from(c.ports.clone()),
-                ]
-            };
+                cells.push(Cell::from(check));
+            }
+            if columns.show_name {
+                cells.push(Cell::from(format!("{} {}", indicator, &c.name)));
+            }
+            if columns.show_image {
+                cells.push(Cell::from(c.image.clone()));
+            }
+            if columns.show_state {
+                cells.push(Cell::from(state_text).style(Style::default().fg(state_color)));
+            }
+            if columns.show_ports {
+                cells.push(Cell::from(c.ports.clone()));
+            }
 
             let row_style = if is_selected { selected_bg } else { Style::default() };
 

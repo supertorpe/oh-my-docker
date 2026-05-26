@@ -234,7 +234,7 @@ pub fn render_run(frame: &mut Frame, run: &ImageRunState) {
     });
 }
 
-pub fn render(frame: &mut Frame, state: &ImagesState) {
+pub fn render(frame: &mut Frame, state: &ImagesState, columns: &crate::config::ImageColumns) {
     let area = frame.area();
 
     let (indicator_char, indicator_color) = if state.loading {
@@ -280,17 +280,29 @@ pub fn render(frame: &mut Frame, state: &ImagesState) {
 
     let selected_bg = Style::default().bg(Color::Blue).fg(Color::White);
 
-    let widths = [
-        Constraint::Length(22),
-        Constraint::Length(12),
-        Constraint::Length(14),
-        Constraint::Length(10),
-    ];
+    let mut widths = Vec::new();
+    let mut header_cells = Vec::new();
 
-    let header_cells = ["REPOSITORY", "TAG", "IMAGE ID", "SIZE"]
-        .iter()
-        .map(|h| Cell::from(*h).style(Style::default().fg(Color::Cyan)));
-    let header_row = Row::new(header_cells).height(1);
+    if columns.show_repository {
+        widths.push(Constraint::Length(22));
+        header_cells.push("REPOSITORY");
+    }
+    if columns.show_tag {
+        widths.push(Constraint::Length(12));
+        header_cells.push("TAG");
+    }
+    if columns.show_id {
+        widths.push(Constraint::Length(14));
+        header_cells.push("IMAGE ID");
+    }
+    if columns.show_size {
+        widths.push(Constraint::Length(10));
+        header_cells.push("SIZE");
+    }
+
+    let header_row = Row::new(
+        header_cells.iter().map(|h| Cell::from(*h).style(Style::default().fg(Color::Cyan)))
+    ).height(1);
 
     let rows: Vec<Row> = state
         .filtered
@@ -310,16 +322,25 @@ pub fn render(frame: &mut Frame, state: &ImagesState) {
                 format!("{}B", img.size)
             };
 
+            let mut cells: Vec<Cell> = Vec::new();
+            if columns.show_repository {
+                cells.push(Cell::from(format!("{} {}", indicator, img.repository)));
+            }
+            if columns.show_tag {
+                cells.push(Cell::from(img.tag.clone()));
+            }
+            if columns.show_id {
+                cells.push(Cell::from(img.id[..12.min(img.id.len())].to_string()));
+            }
+            if columns.show_size {
+                cells.push(Cell::from(size_str));
+            }
+
             let row_style = if is_selected { selected_bg } else { Style::default() };
 
-            Row::new(vec![
-                Cell::from(format!("{} {}", indicator, img.repository)),
-                Cell::from(img.tag.clone()),
-                Cell::from(img.id[..12.min(img.id.len())].to_string()),
-                Cell::from(size_str),
-            ])
-            .style(row_style)
-            .height(1)
+            Row::new(cells)
+                .style(row_style)
+                .height(1)
         })
         .collect();
 

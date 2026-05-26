@@ -20,7 +20,7 @@ pub mod confirm_dialog;
 
 pub fn render(frame: &mut Frame, state: &mut AppState) {
     match state.navigation.mode_stack.current() {
-        Mode::Containers => containers::render(frame, &state.containers, state.tick_count),
+        Mode::Containers => containers::render(frame, &state.containers, state.tick_count, &state.config.container_columns),
         Mode::ContainerDetails(_) => {
             if let Some(ref mut details) = state.navigation.details {
                 container_details::render(frame, details, &state.containers);
@@ -35,7 +35,7 @@ pub fn render(frame: &mut Frame, state: &mut AppState) {
                 logs_render_placeholder(frame);
             }
         }
-        Mode::Images => images::render(frame, &state.images),
+       Mode::Images => images::render(frame, &state.images, &state.config.image_columns),
         Mode::ImageRun(_) => {
             if let Some(ref run) = state.navigation.image_run {
                 images::render_run(frame, run);
@@ -55,8 +55,8 @@ pub fn render(frame: &mut Frame, state: &mut AppState) {
         }
         Mode::Events => events::render(frame, &mut state.events),
         Mode::Statistics => statistics::render(frame, &state.statistics),
-        Mode::Networks => networks::render(frame, &state.networks),
-        Mode::Volumes => volumes::render(frame, &state.volumes),
+       Mode::Networks => networks::render(frame, &state.networks, &state.config.network_columns),
+       Mode::Volumes => volumes::render(frame, &state.volumes, &state.config.volume_columns),
         Mode::Help => help::render(frame, &mut state.navigation.help, &state.config),
         Mode::ConfirmDialog { .. } => confirm_dialog::render(frame, state.navigation.mode_stack.current()),
     }

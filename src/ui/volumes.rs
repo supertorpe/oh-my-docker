@@ -6,7 +6,7 @@ use ratatui::widgets::{Block, Borders, Cell, Paragraph, BorderType, Row, Table, 
 
 use crate::app::state::VolumesState;
 
-pub fn render(frame: &mut Frame, state: &VolumesState) {
+pub fn render(frame: &mut Frame, state: &VolumesState, columns: &crate::config::VolumeColumns) {
     let area = frame.area();
 
     let (indicator_char, indicator_color) = if state.loading {
@@ -53,16 +53,25 @@ pub fn render(frame: &mut Frame, state: &VolumesState) {
         .add_modifier(Modifier::BOLD);
     let selected_bg = Style::default().bg(Color::Blue).fg(Color::White);
 
-    let widths = [
-        Constraint::Length(22),
-        Constraint::Length(10),
-        Constraint::Fill(1),
-    ];
+    let mut widths = Vec::new();
+    let mut header_cells = Vec::new();
 
-    let header_cells = ["NAME", "DRIVER", "MOUNTPOINT"]
-        .iter()
-        .map(|h| Cell::from(*h).style(header_style));
-    let header_row = Row::new(header_cells).height(1);
+    if columns.show_name {
+        widths.push(Constraint::Length(22));
+        header_cells.push("NAME");
+    }
+    if columns.show_driver {
+        widths.push(Constraint::Length(10));
+        header_cells.push("DRIVER");
+    }
+    if columns.show_mountpoint {
+        widths.push(Constraint::Fill(1));
+        header_cells.push("MOUNTPOINT");
+    }
+
+    let header_row = Row::new(
+        header_cells.iter().map(|h| Cell::from(*h).style(header_style))
+    ).height(1);
 
     let rows: Vec<Row> = state
         .items
@@ -73,13 +82,20 @@ pub fn render(frame: &mut Frame, state: &VolumesState) {
             let indicator = if is_selected { "▶" } else { " " };
             let row_style = if is_selected { selected_bg } else { Style::default() };
 
-            Row::new(vec![
-                Cell::from(format!("{} {}", indicator, &v.name)),
-                Cell::from(v.driver.clone()),
-                Cell::from(v.mountpoint.clone()),
-            ])
-            .style(row_style)
-            .height(1)
+            let mut cells: Vec<Cell> = Vec::new();
+            if columns.show_name {
+                cells.push(Cell::from(format!("{} {}", indicator, &v.name)));
+            }
+            if columns.show_driver {
+                cells.push(Cell::from(v.driver.clone()));
+            }
+            if columns.show_mountpoint {
+                cells.push(Cell::from(v.mountpoint.clone()));
+            }
+
+            Row::new(cells)
+                .style(row_style)
+                .height(1)
         })
         .collect();
 
