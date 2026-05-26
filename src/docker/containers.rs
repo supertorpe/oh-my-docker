@@ -6,6 +6,13 @@ use serde_json::Value;
 
 use crate::app::event::ContainerSummary;
 
+fn extract_project(labels: &Option<std::collections::HashMap<String, String>>) -> String {
+    labels
+        .as_ref()
+        .and_then(|l| l.get("com.docker.compose.project").map(|s| s.to_string()))
+        .unwrap_or_default()
+}
+
 pub async fn list_containers(docker: &Docker) -> Result<Vec<ContainerSummary>> {
     let options = ListContainersOptions::<String> {
         all: true,
@@ -49,6 +56,7 @@ pub async fn list_containers(docker: &Docker) -> Result<Vec<ContainerSummary>> {
                 state: c.state.unwrap_or_default(),
                 status: c.status.unwrap_or_default(),
                 ports,
+                project: extract_project(&c.labels),
             }
         })
         .collect();

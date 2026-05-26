@@ -24,6 +24,8 @@ pub struct ContainersState {
     pub selection_mode: bool,
     pub selected_ids: HashSet<String>,
     pub last_updated: Option<Instant>,
+    pub group_by_project: bool,
+    pub expanded_projects: HashSet<String>,
 }
 
 impl Default for ContainersState {
@@ -43,6 +45,8 @@ impl Default for ContainersState {
             selection_mode: false,
             selected_ids: HashSet::new(),
             last_updated: None,
+            group_by_project: false,
+            expanded_projects: HashSet::new(),
         }
     }
 }

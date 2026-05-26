@@ -134,64 +134,143 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64, colum
         header_cells.iter().map(|h| Cell::from(*h).style(header_style))
     ).height(1);
 
-   let rows: Vec<Row> = state
-        .filtered
-        .iter()
-        .map(|&idx| {
-            let c = &state.items[idx];
-            let is_selected = state.filtered.get(state.selected) == Some(&idx);
-            let is_stopping = state.stopping_containers.contains(&c.id);
-            let is_starting = state.starting_containers.contains(&c.id);
-            let is_deleting = state.deleting_containers.contains(&c.id);
-            let is_id_selected = state.selected_ids.contains(&c.id);
-
-            let state_color = if is_stopping || is_starting || is_deleting {
-                Color::Yellow
+   let rows: Vec<Row> = if state.group_by_project {
+        let mut grouped: std::collections::HashMap<String, Vec<usize>> = std::collections::HashMap::new();
+        for &idx in &state.filtered {
+            let project = &state.items[idx].project;
+            grouped.entry(project.clone()).or_default().push(idx);
+        }
+        let mut all_rows = Vec::new();
+        let mut project_names: Vec<String> = grouped.keys().cloned().collect();
+        project_names.sort();
+        for project in project_names {
+            let is_expanded = state.expanded_projects.contains(&project);
+            let count = grouped[&project].len();
+            let header = if is_expanded {
+                format!("▾ {} ({})", project, count)
             } else {
-                match c.state.as_str() {
-                    "running" => Color::Green,
-                    "exited" | "dead" => Color::Red,
-                    _ => Color::Yellow,
+                format!("▸ {} ({})", project, count)
+            };
+            let header_cells: Vec<Cell> = vec![Cell::from(header)]
+                .into_iter()
+                .map(|c| c.style(Style::default().fg(Color::Yellow)))
+                .collect();
+            all_rows.push(Row::new(header_cells));
+            if is_expanded {
+                for &idx in &grouped[&project] {
+                    let c = &state.items[idx];
+                    let is_selected = state.filtered.get(state.selected) == Some(&idx);
+                    let is_stopping = state.stopping_containers.contains(&c.id);
+                    let is_starting = state.starting_containers.contains(&c.id);
+                    let is_deleting = state.deleting_containers.contains(&c.id);
+                    let is_id_selected = state.selected_ids.contains(&c.id);
+
+                    let state_color = if is_stopping || is_starting || is_deleting {
+                        Color::Yellow
+                    } else {
+                        match c.state.as_str() {
+                            "running" => Color::Green,
+                            "exited" | "dead" => Color::Red,
+                            _ => Color::Yellow,
+                        }
+                    };
+
+                    let state_text = if is_stopping {
+                        "stopping...".to_string()
+                    } else if is_starting {
+                        "starting...".to_string()
+                    } else if is_deleting {
+                        "deleting...".to_string()
+                    } else {
+                        c.status.clone()
+                    };
+
+                    let indicator = if is_selected { "▶" } else { " " };
+
+                    let mut cells: Vec<Cell> = Vec::new();
+                    if state.selection_mode {
+                        let check = if is_id_selected { "[x]" } else { "[ ]" };
+                        cells.push(Cell::from(check));
+                    }
+                    if columns.show_name {
+                        cells.push(Cell::from(format!("    {} {}", indicator, &c.name)));
+                    }
+                    if columns.show_image {
+                        cells.push(Cell::from(c.image.clone()));
+                    }
+                    if columns.show_state {
+                        cells.push(Cell::from(state_text).style(Style::default().fg(state_color)));
+                    }
+                    if columns.show_ports {
+                        cells.push(Cell::from(c.ports.clone()));
+                    }
+
+                    let row_style = if is_selected { selected_bg } else { Style::default() };
+                    all_rows.push(Row::new(cells).style(row_style).height(1));
                 }
-            };
-
-            let state_text = if is_stopping {
-                "stopping...".to_string()
-            } else if is_starting {
-                "starting...".to_string()
-            } else if is_deleting {
-                "deleting...".to_string()
-            } else {
-                c.status.clone()
-            };
-
-            let indicator = if is_selected { "▶" } else { " " };
-
-            let mut cells: Vec<Cell> = Vec::new();
-            if state.selection_mode {
-                let check = if is_id_selected { "[x]" } else { "[ ]" };
-                cells.push(Cell::from(check));
             }
-            if columns.show_name {
-                cells.push(Cell::from(format!("{} {}", indicator, &c.name)));
-            }
-            if columns.show_image {
-                cells.push(Cell::from(c.image.clone()));
-            }
-            if columns.show_state {
-                cells.push(Cell::from(state_text).style(Style::default().fg(state_color)));
-            }
-            if columns.show_ports {
-                cells.push(Cell::from(c.ports.clone()));
-            }
+        }
+        all_rows
+    } else {
+        state
+            .filtered
+            .iter()
+            .map(|&idx| {
+                let c = &state.items[idx];
+                let is_selected = state.filtered.get(state.selected) == Some(&idx);
+                let is_stopping = state.stopping_containers.contains(&c.id);
+                let is_starting = state.starting_containers.contains(&c.id);
+                let is_deleting = state.deleting_containers.contains(&c.id);
+                let is_id_selected = state.selected_ids.contains(&c.id);
 
-            let row_style = if is_selected { selected_bg } else { Style::default() };
+                let state_color = if is_stopping || is_starting || is_deleting {
+                    Color::Yellow
+                } else {
+                    match c.state.as_str() {
+                        "running" => Color::Green,
+                        "exited" | "dead" => Color::Red,
+                        _ => Color::Yellow,
+                    }
+                };
 
-            Row::new(cells)
-                .style(row_style)
-                .height(1)
-        })
-        .collect();
+                let state_text = if is_stopping {
+                    "stopping...".to_string()
+                } else if is_starting {
+                    "starting...".to_string()
+                } else if is_deleting {
+                    "deleting...".to_string()
+                } else {
+                    c.status.clone()
+                };
+
+                let indicator = if is_selected { "▶" } else { " " };
+
+                let mut cells: Vec<Cell> = Vec::new();
+                if state.selection_mode {
+                    let check = if is_id_selected { "[x]" } else { "[ ]" };
+                    cells.push(Cell::from(check));
+                }
+                if columns.show_name {
+                    cells.push(Cell::from(format!("{} {}", indicator, &c.name)));
+                }
+                if columns.show_image {
+                    cells.push(Cell::from(c.image.clone()));
+                }
+                if columns.show_state {
+                    cells.push(Cell::from(state_text).style(Style::default().fg(state_color)));
+                }
+                if columns.show_ports {
+                    cells.push(Cell::from(c.ports.clone()));
+                }
+
+                let row_style = if is_selected { selected_bg } else { Style::default() };
+
+                Row::new(cells)
+                    .style(row_style)
+                    .height(1)
+            })
+            .collect()
+    };
 
     let table = Table::new(rows, widths)
         .header(header_row)

@@ -125,6 +125,9 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
                 return None;
             }
         }
+        if km.is_toggle_group_by_project(code, mods) {
+            return Some(AppEvent::ToggleGroupByProject);
+        }
         if code == KeyCode::Char('i') {
             return Some(AppEvent::Navigate(Mode::Images));
         }

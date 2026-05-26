@@ -83,6 +83,12 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                 }
             }
         }
+        AppEvent::ToggleGroupByProject => {
+            state.containers.group_by_project = !state.containers.group_by_project;
+            if !state.containers.group_by_project {
+                state.containers.expanded_projects.clear();
+            }
+        }
         AppEvent::BatchToggleContainers(ids) => {
             for id in ids {
                 let is_running = state.containers.items.iter()

@@ -8,6 +8,7 @@ pub struct ContainerSummary {
     pub state: String,
     pub status: String,
     pub ports: String,
+    pub project: String,
 }
 
 #[derive(Clone, Debug)]
@@ -132,6 +133,7 @@ pub enum AppEvent {
     ToggleSelectContainer(String),
     SelectAllContainers,
     BatchToggleContainers(Vec<String>),
+    ToggleGroupByProject,
 
     LogLines(String, Vec<LogEntry>),
     TogglePause,
