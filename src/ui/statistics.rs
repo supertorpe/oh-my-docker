@@ -43,7 +43,7 @@ pub fn render(frame: &mut Frame, state: &StatisticsState) {
         let text = Text::from(vec![
             Line::from(Span::styled("  No running containers", Style::default().fg(Color::Yellow))),
             Line::from(""),
-            Line::from(Span::styled("  s:sort  S:direction  Esc  back", Style::default().fg(Color::DarkGray))),
+            Line::from(Span::styled("  ←/→:sort  t:direction  Esc  back", Style::default().fg(Color::DarkGray))),
         ]);
         frame.render_widget(Paragraph::new(text).block(block), area);
         return;
@@ -151,7 +151,7 @@ pub fn render(frame: &mut Frame, state: &StatisticsState) {
         height: 1,
     };
     frame.render_widget(
-        Paragraph::new(" s:sort  S:direction  Esc  back").style(Style::default().fg(Color::DarkGray)),
+        Paragraph::new(" ←/→:sort  t:direction  Esc  back").style(Style::default().fg(Color::DarkGray)),
         footer,
     );
 }

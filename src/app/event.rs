@@ -96,6 +96,7 @@ pub enum ConfirmAction {
     RemoveVolume(String),
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub enum AppEvent {
     Navigate(Mode),

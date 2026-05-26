@@ -23,7 +23,7 @@ pub fn render(frame: &mut Frame, state: &mut AppState) {
         Mode::Containers => containers::render(frame, &state.containers, state.tick_count),
         Mode::ContainerDetails(_) => {
             if let Some(ref mut details) = state.details {
-                container_details::render(frame, details);
+                container_details::render(frame, details, &state.containers);
             } else {
                 container_details::render_placeholder(frame);
             }

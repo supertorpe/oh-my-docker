@@ -468,12 +468,18 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             new_state.error_timer = 10;
         }
         AppEvent::RunImage(id) => {
+            let image_base = crate::util::image_base_name(&id).to_string();
+            let latest = new_state.config.latest_shell.clone().unwrap_or_else(|| "bash".to_string());
+            let per_image = new_state.config.images.get(&image_base).cloned().unwrap_or_default();
+            let shell = per_image.shell.unwrap_or(latest);
+            let user = per_image.user.unwrap_or_default();
+            let workdir = per_image.workdir.unwrap_or_default();
             new_state.image_run = Some(ImageRunState {
                 image_id: id.clone(),
                 command: String::new(),
-                shell: "bash".to_string(),
-                user: String::new(),
-                workdir: String::new(),
+                shell,
+                user,
+                workdir,
                 env_vars: String::new(),
                 port_mapping: String::new(),
                 volumes: String::new(),
@@ -518,6 +524,9 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
                     log.scroll_offset = log.scroll_offset.saturating_add(delta as usize);
                 } else {
                     log.scroll_offset = log.scroll_offset.saturating_sub((-delta) as usize);
+                }
+                if log.scroll_offset > log.buffer.len() {
+                    log.scroll_offset = log.buffer.len();
                 }
                 log.tail = log.scroll_offset == 0;
             }

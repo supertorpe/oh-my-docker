@@ -4,7 +4,7 @@ use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Paragraph, BorderType};
 
-use crate::app::state::DetailsState;
+use crate::app::state::{DetailsState, ContainersState};
 use serde_json::Value;
 
 pub fn render_placeholder(frame: &mut Frame) {
@@ -27,7 +27,7 @@ pub fn render_placeholder(frame: &mut Frame) {
     frame.render_widget(paragraph, frame.area());
 }
 
-pub fn render(frame: &mut Frame, details: &mut DetailsState) {
+pub fn render(frame: &mut Frame, details: &mut DetailsState, containers: &ContainersState) {
     let area = frame.area();
     let footer_height = 1u16;
 
@@ -52,7 +52,7 @@ pub fn render(frame: &mut Frame, details: &mut DetailsState) {
         height: footer_height,
     };
 
-    let text = build_text(details);
+    let text = build_text(details, containers);
     let max_offset = text.height().saturating_sub(content_area.height as usize);
     let scroll_offset = details.scroll_offset.min(max_offset);
     details.scroll_offset = scroll_offset;
@@ -80,7 +80,7 @@ pub fn render(frame: &mut Frame, details: &mut DetailsState) {
     );
 }
 
-fn build_text(details: &DetailsState) -> Text<'static> {
+fn build_text(details: &DetailsState, containers: &ContainersState) -> Text<'static> {
     let json_str = match details.json {
         Some(ref s) => s.clone(),
         None => return Text::from(vec![
@@ -95,12 +95,15 @@ fn build_text(details: &DetailsState) -> Text<'static> {
         ]),
     };
 
+    let is_stopping = containers.stopping_containers.contains(&details.id);
+    let is_deleting = containers.deleting_containers.contains(&details.id);
+
     let mut lines: Vec<Line<'static>> = vec![];
 
     push_line_name(&mut lines, &json, "Name", "Name");
     push_line(&mut lines, "Image", extract(&json, &["Config", "Image"]));
     push_line(&mut lines, "Command", extract_cmd(&json));
-    push_status(&mut lines, &json);
+    push_status(&mut lines, &json, is_stopping, is_deleting);
     push_line(&mut lines, "Created", extract(&json, &["Created"]));
 
     lines.push(Line::from(""));
@@ -146,19 +149,29 @@ fn push_line(lines: &mut Vec<Line<'static>>, label: &str, value: String) {
     }
 }
 
-fn push_status(lines: &mut Vec<Line<'static>>, json: &Value) {
-    let status = extract(json, &["State", "Status"]);
-    if !status.is_empty() {
-        let color = match status.as_str() {
-            "running" => Color::Green,
-            "exited" | "dead" => Color::Red,
-            _ => Color::Yellow,
-        };
-        lines.push(Line::from(vec![
-            Span::raw(" Status:       "),
-            Span::styled(status.clone(), Style::default().fg(color)),
-        ]));
-    }
+fn push_status(lines: &mut Vec<Line<'static>>, json: &Value, is_stopping: bool, is_deleting: bool) {
+    let status = if is_stopping {
+        "stopping...".to_string()
+    } else if is_deleting {
+        "deleting...".to_string()
+    } else {
+        let s = extract(json, &["State", "Status"]);
+        if s.is_empty() {
+            "unknown".to_string()
+        } else {
+            s
+        }
+    };
+    let color = match status.as_str() {
+        "running" => Color::Green,
+        "exited" | "dead" => Color::Red,
+        "stopping..." | "deleting..." => Color::Yellow,
+        _ => Color::Yellow,
+    };
+    lines.push(Line::from(vec![
+        Span::raw(" Status:       "),
+        Span::styled(status, Style::default().fg(color)),
+    ]));
 }
 
 fn push_section_env(lines: &mut Vec<Line<'static>>, json: &Value) {

@@ -376,8 +376,9 @@ fn handle_events_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
 fn handle_statistics_key(key: KeyEvent) -> Option<AppEvent> {
     match key.code {
         KeyCode::Esc => Some(AppEvent::Back),
-        KeyCode::Char('s') => Some(AppEvent::CycleSortStat),
-        KeyCode::Char('S') => Some(AppEvent::ToggleSortDirection),
+        KeyCode::Char('t') => Some(AppEvent::ToggleSortDirection),
+        KeyCode::Left => Some(AppEvent::CycleSortStat),
+        KeyCode::Right => Some(AppEvent::CycleSortStat),
         _ => None,
     }
 }

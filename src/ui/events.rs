@@ -96,17 +96,29 @@ pub fn render(frame: &mut Frame, state: &EventsState) {
     render_footer(frame, area, state.paused, state.buffer.len());
 }
 
-fn render_footer(frame: &mut Frame, area: Rect, paused: bool, total: usize) {
+fn render_footer(frame: &mut Frame, area: Rect, paused: bool, _total: usize) {
     let footer = Rect {
         x: area.x,
         y: area.height.saturating_sub(1),
         width: area.width,
         height: 1,
     };
-    let text = if paused {
-        format!("  r resume   / filter   e:export   j/k scroll   Esc back  ({} events)", total)
+ let text = if paused {
+        if area.width >= 55 {
+            "  r resume   / filter   e:export   ↑↓/k j line   PgUp/PgDn page   g/G top/bottom   Esc back"
+        } else if area.width >= 40 {
+            "  r resume   / filter   e:export   PgUp/PgDn page   Esc back"
+        } else {
+            "  r resume   / filter   e:export   Esc back"
+        }
     } else {
-        format!("  p pause   / filter   e:export   j/k scroll   Esc back  ({} events)", total)
+        if area.width >= 55 {
+            "  p pause   / filter   e:export   ↑↓/k j line   PgUp/PgDn page   g/G top/bottom   Esc back"
+        } else if area.width >= 40 {
+            "  p pause   / filter   e:export   PgUp/PgDn page   Esc back"
+        } else {
+            "  p pause   / filter   e:export   Esc back"
+        }
     };
     frame.render_widget(
         Paragraph::new(text).style(Style::default().fg(Color::DarkGray)),

@@ -179,7 +179,7 @@ fn render_footer(frame: &mut Frame, area: Rect, selection_mode: bool) {
         height: 1,
     };
     let text = if selection_mode {
-        " Space:toggle/select  a:all  t:stop  d:delete  Esc:exit mode  j/k ↓↑  /search  Enter:details  l:logs  s:shell  ?:help "
+        " Space:toggle/select  Ctrl+a:all  t:stop  d:delete  Esc:exit mode  j/k ↓↑  /search  Enter:details  l:logs  s:shell  ?:help "
     } else {
         " Space:select mode  j/k ↓↑  /search  Enter:details  l:logs  s:shell  r:restart  t:stop/start  d:delete  ?:help "
     };
