@@ -26,13 +26,13 @@ use app::event::Command;
 use runtime::tasks;
 use tokio::sync::mpsc::UnboundedSender;
 
-fn spawn_all_pollers(docker: Docker, tx: UnboundedSender<AppEvent>) {
-    tasks::spawn_container_poller(docker.clone(), tx.clone());
-    tasks::spawn_image_poller(docker.clone(), tx.clone());
+fn spawn_all_pollers(docker: Docker, tx: UnboundedSender<AppEvent>, intervals: crate::config::PollingIntervals) {
+    tasks::spawn_container_poller(docker.clone(), tx.clone(), intervals.clone());
+    tasks::spawn_image_poller(docker.clone(), tx.clone(), intervals.clone());
     tasks::spawn_event_streamer(docker.clone(), tx.clone());
-    tasks::spawn_statistics_poller(docker.clone(), tx.clone());
-    tasks::spawn_network_poller(docker.clone(), tx.clone());
-    tasks::spawn_volume_poller(docker.clone(), tx.clone());
+    tasks::spawn_statistics_poller(docker.clone(), tx.clone(), intervals.clone());
+    tasks::spawn_network_poller(docker.clone(), tx.clone(), intervals.clone());
+    tasks::spawn_volume_poller(docker.clone(), tx.clone(), intervals);
 }
 
 #[tokio::main]
@@ -61,6 +61,7 @@ async fn main() -> Result<()> {
     }
 
     let mut config = config::OmdockerConfig::load();
+    config.polling.clamp();
     if config.check_updates.is_none() {
         print!("Check for updates on startup? [Y/n]: ");
         use std::io::Write;
@@ -83,10 +84,11 @@ async fn main() -> Result<()> {
     state.rebuild_keymap();
     let (event_tx, mut event_rx) = mpsc::unbounded_channel::<app::event::AppEvent>();
 
+    let intervals = state.config.polling.clone();
     let docker: Option<Docker> = match docker::client::connect() {
         Ok(d) => {
             state.containers.docker_connected = true;
-            spawn_all_pollers(d.clone(), event_tx.clone());
+            spawn_all_pollers(d.clone(), event_tx.clone(), intervals);
             Some(d)
         }
         Err(e) => {
@@ -94,6 +96,7 @@ async fn main() -> Result<()> {
             state.containers.docker_reconnecting = true;
             state.error = Some(format!("Docker connection failed: {}", e));
             state.error_timer = 10;
+            let intervals = state.config.polling.clone();
             let tx = event_tx.clone();
             tokio::spawn(async move {
                 let mut interval = tokio::time::interval(Duration::from_secs(5));
@@ -103,7 +106,7 @@ async fn main() -> Result<()> {
                     match docker::client::connect() {
                         Ok(d) => {
                             tx.send(app::event::AppEvent::DockerReconnected).ok();
-                            spawn_all_pollers(d.clone(), tx.clone());
+                            spawn_all_pollers(d.clone(), tx.clone(), intervals);
                             break;
                         }
                         Err(e) => {

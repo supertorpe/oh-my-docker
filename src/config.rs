@@ -10,6 +10,39 @@ pub struct ContainerShellConfig {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct PollingIntervals {
+    pub containers_ms: u64,
+    pub statistics_ms: u64,
+    pub images_ms: u64,
+    pub networks_ms: u64,
+    pub volumes_ms: u64,
+}
+
+impl Default for PollingIntervals {
+    fn default() -> Self {
+        Self {
+            containers_ms: 2000,
+            statistics_ms: 2000,
+            images_ms: 10000,
+            networks_ms: 10000,
+            volumes_ms: 10000,
+        }
+    }
+}
+
+impl PollingIntervals {
+    pub fn clamp(&mut self) {
+        const MIN_MS: u64 = 500;
+        const MAX_MS: u64 = 60000;
+        self.containers_ms = self.containers_ms.clamp(MIN_MS, MAX_MS);
+        self.statistics_ms = self.statistics_ms.clamp(MIN_MS, MAX_MS);
+        self.images_ms = self.images_ms.clamp(MIN_MS, MAX_MS);
+        self.networks_ms = self.networks_ms.clamp(MIN_MS, MAX_MS);
+        self.volumes_ms = self.volumes_ms.clamp(MIN_MS, MAX_MS);
+    }
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Keybindings {
     pub quit: String,
     pub back: String,
@@ -152,6 +185,8 @@ pub struct OmdockerConfig {
     pub check_updates: Option<bool>,
     #[serde(default)]
     pub keybindings: Keybindings,
+    #[serde(default)]
+    pub polling: PollingIntervals,
 }
 
 impl OmdockerConfig {
@@ -168,6 +203,7 @@ impl Default for OmdockerConfig {
             images: HashMap::new(),
             check_updates: None,
             keybindings: Keybindings::default(),
+            polling: PollingIntervals::default(),
         }
     }
 }

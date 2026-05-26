@@ -5,11 +5,12 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::app::event::AppEvent;
 use crate::app::event::ContainerOpts;
+use crate::config::PollingIntervals;
 use crate::docker;
 
-pub fn spawn_container_poller(docker: Docker, tx: UnboundedSender<AppEvent>) {
+pub fn spawn_container_poller(docker: Docker, tx: UnboundedSender<AppEvent>, intervals: PollingIntervals) {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_secs(2));
+        let mut interval = tokio::time::interval(Duration::from_millis(intervals.containers_ms));
         let mut consecutive_errors = 0u8;
         loop {
             interval.tick().await;
@@ -110,9 +111,9 @@ pub fn spawn_delete(docker: Docker, tx: UnboundedSender<AppEvent>, id: String) {
     });
 }
 
-pub fn spawn_image_poller(docker: Docker, tx: UnboundedSender<AppEvent>) {
+pub fn spawn_image_poller(docker: Docker, tx: UnboundedSender<AppEvent>, intervals: PollingIntervals) {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_secs(10));
+        let mut interval = tokio::time::interval(Duration::from_millis(intervals.images_ms));
         loop {
             interval.tick().await;
             match docker::images::list_images(&docker).await {
@@ -194,9 +195,9 @@ pub fn spawn_event_streamer(docker: Docker, tx: UnboundedSender<AppEvent>) {
     });
 }
 
-pub fn spawn_statistics_poller(docker: Docker, tx: UnboundedSender<AppEvent>) {
+pub fn spawn_statistics_poller(docker: Docker, tx: UnboundedSender<AppEvent>, intervals: PollingIntervals) {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_secs(2));
+        let mut interval = tokio::time::interval(Duration::from_millis(intervals.statistics_ms));
         loop {
             interval.tick().await;
             match docker::statistics::list_statistics(&docker).await {
@@ -215,9 +216,9 @@ pub fn spawn_statistics_poller(docker: Docker, tx: UnboundedSender<AppEvent>) {
     });
 }
 
-pub fn spawn_network_poller(docker: Docker, tx: UnboundedSender<AppEvent>) {
+pub fn spawn_network_poller(docker: Docker, tx: UnboundedSender<AppEvent>, intervals: PollingIntervals) {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_secs(10));
+        let mut interval = tokio::time::interval(Duration::from_millis(intervals.networks_ms));
         loop {
             interval.tick().await;
             match docker::networks::list_networks(&docker).await {
@@ -236,9 +237,9 @@ pub fn spawn_network_poller(docker: Docker, tx: UnboundedSender<AppEvent>) {
     });
 }
 
-  pub fn spawn_volume_poller(docker: Docker, tx: UnboundedSender<AppEvent>) {
+  pub fn spawn_volume_poller(docker: Docker, tx: UnboundedSender<AppEvent>, intervals: PollingIntervals) {
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(10));
+            let mut interval = tokio::time::interval(Duration::from_millis(intervals.volumes_ms));
             loop {
                 interval.tick().await;
                 match docker::volumes::list_volumes(&docker).await {
