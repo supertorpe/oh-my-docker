@@ -27,110 +27,126 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
             _ => None,
         }
     } else {
-        match key.code {
-            KeyCode::Char('j') | KeyCode::Down => {
-                let next = (state.containers.selected + 1).min(state.containers.filtered.len().saturating_sub(1));
-                Some(AppEvent::SelectContainer(next))
-            }
-            KeyCode::Char('k') | KeyCode::Up => {
-                let prev = state.containers.selected.saturating_sub(1);
-                Some(AppEvent::SelectContainer(prev))
-            }
-            KeyCode::Enter => Some(AppEvent::ShowDetails),
-            KeyCode::Char('/') => Some(AppEvent::ActivateFilter),
-            KeyCode::Char('l') => {
-                state.containers.filtered.get(state.containers.selected)
-                    .and_then(|&idx| state.containers.items.get(idx))
-                    .map(|c| AppEvent::Navigate(Mode::Logs(c.id.clone())))
-            }
-            KeyCode::Char('s') => {
-                state.containers.filtered.get(state.containers.selected)
-                    .and_then(|&idx| state.containers.items.get(idx))
-                    .map(|c| AppEvent::Navigate(Mode::ShellConfig(c.id.clone())))
-            }
-            KeyCode::Char('r') => {
-                state.containers.filtered.get(state.containers.selected)
-                    .and_then(|&idx| state.containers.items.get(idx))
-                    .map(|c| AppEvent::RestartContainer(c.id.clone()))
-            }
-            KeyCode::Char('t') => {
-                if state.containers.selection_mode {
-                    let ids: Vec<String> = state.containers.selected_ids.iter().cloned().collect();
-                    if ids.is_empty() {
-                        state.containers.filtered.get(state.containers.selected)
-                            .and_then(|&idx| state.containers.items.get(idx))
-                            .map(|c| if c.state == "running" {
-                                AppEvent::StopContainer(c.id.clone())
-                            } else {
-                                AppEvent::StartContainer(c.id.clone())
-                            })
-                    } else {
-                        Some(AppEvent::BatchToggleContainers(ids))
-                    }
-                } else {
-                    state.containers.filtered.get(state.containers.selected)
+        let km = &state.keymap;
+        let code = key.code;
+        let mods = key.modifiers;
+
+        if km.is_navigate_down(code, mods) {
+            let next = (state.containers.selected + 1).min(state.containers.filtered.len().saturating_sub(1));
+            return Some(AppEvent::SelectContainer(next));
+        }
+        if km.is_navigate_up(code, mods) {
+            let prev = state.containers.selected.saturating_sub(1);
+            return Some(AppEvent::SelectContainer(prev));
+        }
+        if km.is_open_details(code, mods) {
+            return Some(AppEvent::ShowDetails);
+        }
+        if km.is_search(code, mods) {
+            return Some(AppEvent::ActivateFilter);
+        }
+        if km.is_open_logs(code, mods) {
+            return state.containers.filtered.get(state.containers.selected)
+                .and_then(|&idx| state.containers.items.get(idx))
+                .map(|c| AppEvent::Navigate(Mode::Logs(c.id.clone())));
+        }
+        if km.is_open_shell(code, mods) {
+            return state.containers.filtered.get(state.containers.selected)
+                .and_then(|&idx| state.containers.items.get(idx))
+                .map(|c| AppEvent::Navigate(Mode::ShellConfig(c.id.clone())));
+        }
+        if km.is_restart(code, mods) {
+            return state.containers.filtered.get(state.containers.selected)
+                .and_then(|&idx| state.containers.items.get(idx))
+                .map(|c| AppEvent::RestartContainer(c.id.clone()));
+        }
+        if km.is_start_stop(code, mods) {
+            if state.containers.selection_mode {
+                let ids: Vec<String> = state.containers.selected_ids.iter().cloned().collect();
+                if ids.is_empty() {
+                    return state.containers.filtered.get(state.containers.selected)
                         .and_then(|&idx| state.containers.items.get(idx))
                         .map(|c| if c.state == "running" {
                             AppEvent::StopContainer(c.id.clone())
                         } else {
                             AppEvent::StartContainer(c.id.clone())
-                        })
-                }
-            }
-            KeyCode::Char('d') => {
-                if state.containers.selection_mode {
-                    let ids: Vec<String> = state.containers.selected_ids.iter().cloned().collect();
-                    if ids.is_empty() {
-                        state.containers.filtered.get(state.containers.selected)
-                            .and_then(|&idx| state.containers.items.get(idx))
-                            .map(|c| AppEvent::ShowConfirmDialog(
-                                format!("Delete container '{}'?", c.name),
-                                ConfirmAction::DeleteContainer(c.id.clone()),
-                            ))
-                    } else {
-                        Some(AppEvent::ShowConfirmDialog(
-                            format!("Delete {} selected container(s)?", ids.len()),
-                            ConfirmAction::BatchDeleteContainers,
-                        ))
-                    }
+                        });
                 } else {
-                    state.containers.filtered.get(state.containers.selected)
+                    return Some(AppEvent::BatchToggleContainers(ids));
+                }
+            } else {
+                return state.containers.filtered.get(state.containers.selected)
+                    .and_then(|&idx| state.containers.items.get(idx))
+                    .map(|c| if c.state == "running" {
+                        AppEvent::StopContainer(c.id.clone())
+                    } else {
+                        AppEvent::StartContainer(c.id.clone())
+                    });
+            }
+        }
+        if km.is_delete(code, mods) {
+            if state.containers.selection_mode {
+                let ids: Vec<String> = state.containers.selected_ids.iter().cloned().collect();
+                if ids.is_empty() {
+                    return state.containers.filtered.get(state.containers.selected)
                         .and_then(|&idx| state.containers.items.get(idx))
                         .map(|c| AppEvent::ShowConfirmDialog(
                             format!("Delete container '{}'?", c.name),
                             ConfirmAction::DeleteContainer(c.id.clone()),
-                        ))
-                }
-            }
-            KeyCode::Char(' ') => {
-                if !state.containers.selection_mode {
-                    Some(AppEvent::ToggleSelectionMode)
+                        ));
                 } else {
-                    state.containers.filtered.get(state.containers.selected)
-                        .and_then(|&idx| state.containers.items.get(idx))
-                        .map(|c| AppEvent::ToggleSelectContainer(c.id.clone()))
+                    return Some(AppEvent::ShowConfirmDialog(
+                        format!("Delete {} selected container(s)?", ids.len()),
+                        ConfirmAction::BatchDeleteContainers,
+                    ));
                 }
+            } else {
+                return state.containers.filtered.get(state.containers.selected)
+                    .and_then(|&idx| state.containers.items.get(idx))
+                    .map(|c| AppEvent::ShowConfirmDialog(
+                        format!("Delete container '{}'?", c.name),
+                        ConfirmAction::DeleteContainer(c.id.clone()),
+                    ));
             }
-            KeyCode::Char('a') if key.modifiers == KeyModifiers::CONTROL => {
-                if state.containers.selection_mode {
-                    Some(AppEvent::SelectAllContainers)
-                } else {
-                    None
-                }
-            }
-            KeyCode::Char('i') => Some(AppEvent::Navigate(Mode::Images)),
-            KeyCode::Char('e') => Some(AppEvent::Navigate(Mode::Events)),
-            KeyCode::Char('%') => Some(AppEvent::Navigate(Mode::Statistics)),
-            KeyCode::Char('n') => Some(AppEvent::Navigate(Mode::Networks)),
-            KeyCode::Char('v') => Some(AppEvent::Navigate(Mode::Volumes)),
-            KeyCode::Esc => {
-                if state.containers.selection_mode {
-                    Some(AppEvent::ToggleSelectionMode)
-                } else {
-                    None
-                }
-            }
-            _ => None,
         }
+        if km.is_toggle_selection(code, mods) {
+            if !state.containers.selection_mode {
+                return Some(AppEvent::ToggleSelectionMode);
+            } else {
+                return state.containers.filtered.get(state.containers.selected)
+                    .and_then(|&idx| state.containers.items.get(idx))
+                    .map(|c| AppEvent::ToggleSelectContainer(c.id.clone()));
+            }
+        }
+        if km.is_select_all(code, mods) {
+            if state.containers.selection_mode {
+                return Some(AppEvent::SelectAllContainers);
+            } else {
+                return None;
+            }
+        }
+        if code == KeyCode::Char('i') {
+            return Some(AppEvent::Navigate(Mode::Images));
+        }
+        if code == KeyCode::Char('e') {
+            return Some(AppEvent::Navigate(Mode::Events));
+        }
+        if code == KeyCode::Char('%') {
+            return Some(AppEvent::Navigate(Mode::Statistics));
+        }
+        if code == KeyCode::Char('n') {
+            return Some(AppEvent::Navigate(Mode::Networks));
+        }
+        if code == KeyCode::Char('v') {
+            return Some(AppEvent::Navigate(Mode::Volumes));
+        }
+        if code == KeyCode::Esc {
+            if state.containers.selection_mode {
+                return Some(AppEvent::ToggleSelectionMode);
+            } else {
+                return None;
+            }
+        }
+        None
     }
 }

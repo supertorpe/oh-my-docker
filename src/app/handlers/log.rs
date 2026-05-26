@@ -23,23 +23,48 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
             _ => None,
         }
     } else {
-        match key.code {
-            KeyCode::Char(' ') | KeyCode::Char('p') => Some(AppEvent::TogglePause),
-            KeyCode::Char('r') => {
-                state.navigation.logs.as_ref().and_then(|l| {
-                    if l.paused { Some(AppEvent::TogglePause) } else { None }
-                })
-            }
-            KeyCode::Char('/') => Some(AppEvent::ActivateLogSearch),
-            KeyCode::Char('g') => Some(AppEvent::JumpTop),
-            KeyCode::Char('G') => Some(AppEvent::JumpBottom),
-            KeyCode::Char('s') => state.navigation.logs.as_ref().map(|l| AppEvent::ExportLogs(l.container_id.clone())),
-            KeyCode::Char('T') => Some(AppEvent::ToggleLogTimestamps),
-            KeyCode::Up | KeyCode::Char('k') => Some(AppEvent::ScrollLogs(1)),
-            KeyCode::Down | KeyCode::Char('j') => Some(AppEvent::ScrollLogs(-1)),
-            KeyCode::PageUp => Some(AppEvent::ScrollLogs(20)),
-            KeyCode::PageDown => Some(AppEvent::ScrollLogs(-20)),
-            _ => None,
+        let km = &state.keymap;
+        let code = key.code;
+        let mods = key.modifiers;
+
+        if km.is_toggle_selection(code, mods) || code == KeyCode::Char('p') {
+            return Some(AppEvent::TogglePause);
         }
+        if code == KeyCode::Char('r') {
+            return state.navigation.logs.as_ref().and_then(|l| {
+                if l.paused { Some(AppEvent::TogglePause) } else { None }
+            });
+        }
+        if km.is_search(code, mods) {
+            return Some(AppEvent::ActivateLogSearch);
+        }
+        if km.is_jump_top(code, mods) {
+            return Some(AppEvent::JumpTop);
+        }
+        if km.is_jump_bottom(code, mods) {
+            return Some(AppEvent::JumpBottom);
+        }
+        if code == KeyCode::Char('s') {
+            return state.navigation.logs.as_ref().map(|l| AppEvent::ExportLogs(l.container_id.clone()));
+        }
+        if km.is_toggle_timestamps(code, mods) {
+            return Some(AppEvent::ToggleLogTimestamps);
+        }
+        if km.is_logs_export(code, mods) {
+            return state.navigation.logs.as_ref().map(|l| AppEvent::ExportLogs(l.container_id.clone()));
+        }
+        if code == KeyCode::Up || km.is_navigate_up(code, mods) {
+            return Some(AppEvent::ScrollLogs(1));
+        }
+        if code == KeyCode::Down || km.is_navigate_down(code, mods) {
+            return Some(AppEvent::ScrollLogs(-1));
+        }
+        if code == KeyCode::PageUp {
+            return Some(AppEvent::ScrollLogs(20));
+        }
+        if code == KeyCode::PageDown {
+            return Some(AppEvent::ScrollLogs(-20));
+        }
+        None
     }
 }

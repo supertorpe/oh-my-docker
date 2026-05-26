@@ -2,7 +2,6 @@ use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use crate::app::event::AppEvent;
 use crate::app::mode::Mode;
 use crate::app::state::AppState;
-use crate::input::keys;
 
 pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     if key.kind != KeyEventKind::Press && key.kind != KeyEventKind::Repeat {
@@ -32,23 +31,30 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         || state.navigation.shell_config.is_some()
         || state.navigation.image_run.is_some();
 
-    if key.code != KeyCode::Char('q') || !in_input_mode {
-        if let Some(action) = keys::global_action(key.code) {
-            match action {
-                keys::Action::Quit => return Some(AppEvent::Quit),
-                keys::Action::Back => {
-                    if state.containers.selection_mode {
-                    } else if *state.navigation.mode_stack.current() == Mode::Help {
-                        return Some(AppEvent::HideHelp);
-                    } else if state.navigation.mode_stack.len() > 1 {
-                        return Some(AppEvent::Back);
-                    } else {
-                        return None;
-                    }
-                }
-                keys::Action::ShowHelp => return Some(AppEvent::ShowHelp),
-            }
+    if state.error_persistent {
+        return Some(AppEvent::Info(String::new()));
+    }
+
+    let km = &state.keymap;
+    let code = key.code;
+    let mods = key.modifiers;
+
+    // Check global actions using keymap
+    if km.quit.matches(code, mods) && !in_input_mode {
+        return Some(AppEvent::Quit);
+    }
+    if km.back.matches(code, mods) && !in_input_mode {
+        if state.containers.selection_mode {
+            // Do nothing in selection mode for back
+        } else if *state.navigation.mode_stack.current() == Mode::Help {
+            return Some(AppEvent::HideHelp);
+        } else if state.navigation.mode_stack.len() > 1 {
+            return Some(AppEvent::Back);
         }
+        return None;
+    }
+    if km.help.matches(code, mods) && !in_input_mode {
+        return Some(AppEvent::ShowHelp);
     }
 
     match state.navigation.mode_stack.current() {
@@ -60,10 +66,10 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         Mode::ShellConfig(_) => crate::app::handlers::shell::handle_shell_config_key(key, state),
         Mode::Shell(_) => crate::app::handlers::shell::handle_shell_key(key),
         Mode::Events => crate::app::handlers::event::handle_key(key, state),
-        Mode::Statistics => crate::app::handlers::statistics::handle_key(key),
+        Mode::Statistics => crate::app::handlers::statistics::handle_key(key, state),
         Mode::Networks => crate::app::handlers::network::handle_key(key, state),
         Mode::Volumes => crate::app::handlers::volume::handle_key(key, state),
-        Mode::Help => crate::app::handlers::navigation::handle_help_key(key),
+        Mode::Help => crate::app::handlers::navigation::handle_help_key(key, state),
         Mode::ConfirmDialog { .. } => crate::app::handlers::navigation::handle_confirm_dialog_key(key),
     }
 }

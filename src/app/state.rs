@@ -5,6 +5,7 @@ use tokio::task::AbortHandle;
 use crate::config::OmdockerConfig;
 use crate::app::event::{ContainerSummary, ImageEntry, LogEntry, DockerEvent, StatEntry, NetworkEntry, VolumeEntry};
 use crate::app::navigation::NavigationState;
+use crate::input::keymap::KeyMap;
 
 #[derive(Clone, Debug)]
 pub struct ContainersState {
@@ -199,6 +200,7 @@ pub struct AppState {
     pub networks: NetworksState,
     pub volumes: VolumesState,
     pub config: OmdockerConfig,
+    pub keymap: KeyMap,
     pub update_available: Option<(String, String)>,
     pub error: Option<String>,
     pub error_timer: u8,
@@ -219,6 +221,7 @@ impl AppState {
             networks: NetworksState::default(),
             volumes: VolumesState::default(),
             config: OmdockerConfig::default(),
+            keymap: KeyMap::default(),
             update_available: None,
             error: None,
             error_timer: 0,
@@ -227,5 +230,9 @@ impl AppState {
             log_streams: HashMap::new(),
             quit: false,
         }
+    }
+
+    pub fn rebuild_keymap(&mut self) {
+        self.keymap = self.config.keymap();
     }
 }

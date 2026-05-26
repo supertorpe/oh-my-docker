@@ -57,7 +57,7 @@ pub fn render(frame: &mut Frame, state: &mut AppState) {
         Mode::Statistics => statistics::render(frame, &state.statistics),
         Mode::Networks => networks::render(frame, &state.networks),
         Mode::Volumes => volumes::render(frame, &state.volumes),
-        Mode::Help => help::render(frame, &mut state.navigation.help),
+        Mode::Help => help::render(frame, &mut state.navigation.help, &state.config),
         Mode::ConfirmDialog { .. } => confirm_dialog::render(frame, state.navigation.mode_stack.current()),
     }
 

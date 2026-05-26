@@ -1,5 +1,6 @@
 use crossterm::event::KeyCode;
 
+#[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Action {
     Quit,
@@ -7,6 +8,7 @@ pub enum Action {
     ShowHelp,
 }
 
+#[allow(dead_code)]
 pub fn global_action(code: KeyCode) -> Option<Action> {
     match code {
         KeyCode::Char('q') => Some(Action::Quit),

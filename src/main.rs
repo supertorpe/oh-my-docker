@@ -80,6 +80,7 @@ async fn main() -> Result<()> {
         state.containers.filter_active = false;
     }
     state.config = config;
+    state.rebuild_keymap();
     let (event_tx, mut event_rx) = mpsc::unbounded_channel::<app::event::AppEvent>();
 
     let docker: Option<Docker> = match docker::client::connect() {

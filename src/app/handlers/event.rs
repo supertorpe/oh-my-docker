@@ -18,16 +18,34 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
             _ => None,
         }
     } else {
-        match key.code {
-            KeyCode::Char('e') => Some(AppEvent::ExportEvents),
-            KeyCode::Char('g') => Some(AppEvent::JumpTop),
-            KeyCode::Char('G') => Some(AppEvent::JumpBottom),
-            KeyCode::Char('k') | KeyCode::Up => Some(AppEvent::ScrollEvents(1)),
-            KeyCode::Char('j') | KeyCode::Down => Some(AppEvent::ScrollEvents(-1)),
-            KeyCode::PageUp => Some(AppEvent::ScrollEvents(20)),
-            KeyCode::PageDown => Some(AppEvent::ScrollEvents(-20)),
-            KeyCode::Char('/') => Some(AppEvent::ActivateEventsFilter),
-            _ => None,
+        let km = &state.keymap;
+        let code = key.code;
+        let mods = key.modifiers;
+
+        if code == KeyCode::Char('e') {
+            return Some(AppEvent::ExportEvents);
         }
+        if km.is_jump_top(code, mods) {
+            return Some(AppEvent::JumpTop);
+        }
+        if km.is_jump_bottom(code, mods) {
+            return Some(AppEvent::JumpBottom);
+        }
+        if km.is_navigate_up(code, mods) || code == KeyCode::Up {
+            return Some(AppEvent::ScrollEvents(1));
+        }
+        if km.is_navigate_down(code, mods) || code == KeyCode::Down {
+            return Some(AppEvent::ScrollEvents(-1));
+        }
+        if code == KeyCode::PageUp {
+            return Some(AppEvent::ScrollEvents(20));
+        }
+        if code == KeyCode::PageDown {
+            return Some(AppEvent::ScrollEvents(-20));
+        }
+        if km.is_search(code, mods) {
+            return Some(AppEvent::ActivateEventsFilter);
+        }
+        None
     }
 }

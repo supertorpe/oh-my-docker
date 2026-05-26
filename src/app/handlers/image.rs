@@ -26,44 +26,52 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
             _ => None,
         }
     } else {
-        match key.code {
-            KeyCode::Char('j') | KeyCode::Down => {
-                let next = (state.images.selected + 1).min(state.images.filtered.len().saturating_sub(1));
-                Some(AppEvent::SelectImage(next))
-            }
-            KeyCode::Char('k') | KeyCode::Up => {
-                let prev = state.images.selected.saturating_sub(1);
-                Some(AppEvent::SelectImage(prev))
-            }
-            KeyCode::Char('r') => {
-                state.images.filtered.get(state.images.selected)
-                    .and_then(|&idx| state.images.items.get(idx))
-                    .map(|img| AppEvent::RunImage(img.repository.clone(), img.tag.clone()))
-            }
-            KeyCode::Char('d') => {
-                state.images.filtered.get(state.images.selected)
-                    .and_then(|&idx| state.images.items.get(idx))
-                    .map(|img| AppEvent::ShowConfirmDialog(
-                        format!("Remove image '{}:{}'?", img.repository, img.tag),
-                        ConfirmAction::RemoveImage(img.id.clone()),
-                    ))
-            }
-            KeyCode::Char('D') => Some(AppEvent::ShowConfirmDialog(
+        let km = &state.keymap;
+        let code = key.code;
+        let mods = key.modifiers;
+
+        if km.is_navigate_images(code, mods) || code == KeyCode::Down {
+            let next = (state.images.selected + 1).min(state.images.filtered.len().saturating_sub(1));
+            return Some(AppEvent::SelectImage(next));
+        }
+        if km.is_navigate_up(code, mods) || code == KeyCode::Up {
+            let prev = state.images.selected.saturating_sub(1);
+            return Some(AppEvent::SelectImage(prev));
+        }
+        if km.is_run_image(code, mods) {
+            return state.images.filtered.get(state.images.selected)
+                .and_then(|&idx| state.images.items.get(idx))
+                .map(|img| AppEvent::RunImage(img.repository.clone(), img.tag.clone()));
+        }
+        if km.is_remove_image(code, mods) {
+            return state.images.filtered.get(state.images.selected)
+                .and_then(|&idx| state.images.items.get(idx))
+                .map(|img| AppEvent::ShowConfirmDialog(
+                    format!("Remove image '{}:{}'?", img.repository, img.tag),
+                    ConfirmAction::RemoveImage(img.id.clone()),
+                ));
+        }
+        if km.is_remove_dangling_images(code, mods) {
+            return Some(AppEvent::ShowConfirmDialog(
                 "Remove all dangling (<none>) images?".to_string(),
                 ConfirmAction::RemoveDanglingImages,
-            )),
-            KeyCode::Char('p') => Some(AppEvent::ShowConfirmDialog(
+            ));
+        }
+        if km.is_prune_images(code, mods) {
+            return Some(AppEvent::ShowConfirmDialog(
                 "Prune all unused images?".to_string(),
                 ConfirmAction::PruneUnusedImages,
-            )),
-            KeyCode::Char('/') => Some(AppEvent::ActivateImageFilter),
-            KeyCode::Enter => {
-                state.images.filtered.get(state.images.selected)
-                    .and_then(|&idx| state.images.items.get(idx))
-                    .map(|img| AppEvent::RunImage(img.repository.clone(), img.tag.clone()))
-            }
-            _ => None,
+            ));
         }
+        if km.is_search(code, mods) {
+            return Some(AppEvent::ActivateImageFilter);
+        }
+        if code == KeyCode::Enter {
+            return state.images.filtered.get(state.images.selected)
+                .and_then(|&idx| state.images.items.get(idx))
+                .map(|img| AppEvent::RunImage(img.repository.clone(), img.tag.clone()));
+        }
+        None
     }
 }
 

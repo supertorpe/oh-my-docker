@@ -4,26 +4,48 @@ use crate::app::mode::Mode;
 use crate::app::state::AppState;
 
 pub fn handle_details_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
-    match key.code {
-        KeyCode::Char('l') => state.navigation.details.as_ref().map(|d| AppEvent::Navigate(Mode::Logs(d.id.clone()))),
-        KeyCode::Char('s') => state.navigation.details.as_ref().map(|d| AppEvent::Navigate(Mode::ShellConfig(d.id.clone()))),
-        KeyCode::Char('r') => state.navigation.details.as_ref().map(|d| AppEvent::RestartContainer(d.id.clone())),
-        KeyCode::Char('S') => state.navigation.details.as_ref().map(|d| {
+    let km = &state.keymap;
+    let code = key.code;
+    let mods = key.modifiers;
+
+    if km.is_open_logs(code, mods) {
+        return state.navigation.details.as_ref().map(|d| AppEvent::Navigate(Mode::Logs(d.id.clone())));
+    }
+    if km.is_open_shell(code, mods) {
+        return state.navigation.details.as_ref().map(|d| AppEvent::Navigate(Mode::ShellConfig(d.id.clone())));
+    }
+    if km.is_restart(code, mods) {
+        return state.navigation.details.as_ref().map(|d| AppEvent::RestartContainer(d.id.clone()));
+    }
+    if code == KeyCode::Char('S') {
+        return state.navigation.details.as_ref().map(|d| {
             let cid = d.id.clone();
             let container = state.containers.items.iter().find(|c| c.id == d.id);
             match container.map(|c| c.state.as_str()) {
                 Some("running") => AppEvent::StopContainer(cid),
                 _ => AppEvent::StartContainer(cid),
             }
-        }),
-        KeyCode::Up | KeyCode::Char('k') => Some(AppEvent::ScrollDetails(-1)),
-        KeyCode::Down | KeyCode::Char('j') => Some(AppEvent::ScrollDetails(1)),
-        KeyCode::PageUp => Some(AppEvent::ScrollDetails(-20)),
-        KeyCode::PageDown => Some(AppEvent::ScrollDetails(20)),
-        KeyCode::Char('g') => Some(AppEvent::ScrollDetails(10000)),
-        KeyCode::Char('G') => Some(AppEvent::ScrollDetails(-10000)),
-        _ => None,
+        });
     }
+    if km.is_navigate_up(code, mods) || code == KeyCode::Up {
+        return Some(AppEvent::ScrollDetails(-1));
+    }
+    if km.is_navigate_down(code, mods) || code == KeyCode::Down {
+        return Some(AppEvent::ScrollDetails(1));
+    }
+    if code == KeyCode::PageUp {
+        return Some(AppEvent::ScrollDetails(-20));
+    }
+    if code == KeyCode::PageDown {
+        return Some(AppEvent::ScrollDetails(20));
+    }
+    if km.is_jump_top(code, mods) {
+        return Some(AppEvent::ScrollDetails(10000));
+    }
+    if km.is_jump_bottom(code, mods) {
+        return Some(AppEvent::ScrollDetails(-10000));
+    }
+    None
 }
 
 pub fn handle_confirm_dialog_key(key: KeyEvent) -> Option<AppEvent> {
@@ -34,13 +56,25 @@ pub fn handle_confirm_dialog_key(key: KeyEvent) -> Option<AppEvent> {
     }
 }
 
-pub fn handle_help_key(key: KeyEvent) -> Option<AppEvent> {
-    match key.code {
-        KeyCode::Esc | KeyCode::Char('?') => Some(AppEvent::HideHelp),
-        KeyCode::Char('j') | KeyCode::Down | KeyCode::PageDown => Some(AppEvent::ScrollHelp(1)),
-        KeyCode::Char('k') | KeyCode::Up | KeyCode::PageUp => Some(AppEvent::ScrollHelp(-1)),
-        KeyCode::Char('g') => Some(AppEvent::ScrollHelp(10000)),
-        KeyCode::Char('G') => Some(AppEvent::ScrollHelp(-10000)),
-        _ => None,
+pub fn handle_help_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
+    let km = &state.keymap;
+    let code = key.code;
+    let mods = key.modifiers;
+
+    if code == KeyCode::Esc || km.is_help(code, mods) {
+        return Some(AppEvent::HideHelp);
     }
+    if km.is_navigate_down(code, mods) || code == KeyCode::Down || code == KeyCode::PageDown {
+        return Some(AppEvent::ScrollHelp(1));
+    }
+    if km.is_navigate_up(code, mods) || code == KeyCode::Up || code == KeyCode::PageUp {
+        return Some(AppEvent::ScrollHelp(-1));
+    }
+    if km.is_jump_top(code, mods) {
+        return Some(AppEvent::ScrollHelp(10000));
+    }
+    if km.is_jump_bottom(code, mods) {
+        return Some(AppEvent::ScrollHelp(-10000));
+    }
+    None
 }
