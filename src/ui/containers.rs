@@ -79,15 +79,15 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64) {
         vec![
             Constraint::Length(3),
             Constraint::Min(12),
-            Constraint::Min(20),
-            Constraint::Length(10),
+            Constraint::Min(12),
+            Constraint::Min(16),
             Constraint::Fill(1),
         ]
     } else {
         vec![
             Constraint::Min(15),
-            Constraint::Min(20),
-            Constraint::Length(10),
+            Constraint::Min(14),
+            Constraint::Min(16),
             Constraint::Fill(1),
         ]
     };
@@ -129,7 +129,7 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64) {
             } else if is_deleting {
                 "deleting...".to_string()
             } else {
-                c.state.clone()
+                c.status.clone()
             };
 
             let indicator = if is_selected { "▶" } else { " " };

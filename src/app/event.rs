@@ -6,6 +6,7 @@ pub struct ContainerSummary {
     pub name: String,
     pub image: String,
     pub state: String,
+    pub status: String,
     pub ports: String,
 }
 
