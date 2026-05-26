@@ -655,6 +655,11 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
                     run.validation_errors = errors;
                 }
             } else if let Some(ref run) = new_state.image_run {
+                let image_base = crate::util::image_base_name(&run.image_id).to_string();
+                let entry = new_state.config.images.entry(image_base.clone()).or_default();
+                entry.shell = if run.shell.is_empty() { None } else { Some(run.shell.clone()) };
+                entry.user = if run.user.is_empty() { None } else { Some(run.user.clone()) };
+                entry.workdir = if run.workdir.is_empty() { None } else { Some(run.workdir.clone()) };
                 commands.push(Command::CreateContainer(crate::app::event::ContainerOpts {
                     image: run.image_id.clone(),
                     cmd: run.command.clone(),
@@ -667,6 +672,7 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
                     name: run.container_name.clone(),
                     autoremove: run.autoremove,
                 }));
+                commands.push(Command::SaveConfig);
                 new_state.image_run = None;
                 new_state.mode_stack.back();
             }
