@@ -802,18 +802,23 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             new_state.statistics.items = items;
             new_state.statistics.loading = false;
         }
-        AppEvent::CycleSortStat => {
+        AppEvent::CycleSortStat(dir) => {
             use crate::app::state::StatSort;
-            new_state.statistics.sort_by = match new_state.statistics.sort_by {
-                StatSort::Name => StatSort::Cpu,
-                StatSort::Cpu => StatSort::Memory,
-                StatSort::Memory => StatSort::NetRx,
-                StatSort::NetRx => StatSort::NetTx,
-                StatSort::NetTx => StatSort::BlockRead,
-                StatSort::BlockRead => StatSort::BlockWrite,
-                StatSort::BlockWrite => StatSort::Pids,
-                StatSort::Pids => StatSort::Name,
-            };
+            let variants = [
+                StatSort::Name,
+                StatSort::Cpu,
+                StatSort::Memory,
+                StatSort::NetRx,
+                StatSort::NetTx,
+                StatSort::BlockRead,
+                StatSort::BlockWrite,
+                StatSort::Pids,
+            ];
+            let current = new_state.statistics.sort_by.clone();
+            let pos = variants.iter().position(|v| *v == current).unwrap_or(0);
+            let len = variants.len() as i32;
+            let next = (pos as i32 + dir).rem_euclid(len) as usize;
+            new_state.statistics.sort_by = variants[next].clone();
         }
         AppEvent::ToggleSortDirection => {
             new_state.statistics.sort_ascending = !new_state.statistics.sort_ascending;

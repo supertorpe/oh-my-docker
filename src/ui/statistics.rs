@@ -54,9 +54,9 @@ pub fn render(frame: &mut Frame, state: &StatisticsState) {
         .add_modifier(Modifier::BOLD);
 
     let widths = [
-        Constraint::Min(16),
+        Constraint::Min(10),
         Constraint::Length(8),
-        Constraint::Length(14),
+        Constraint::Length(18),
         Constraint::Length(14),
         Constraint::Length(14),
         Constraint::Length(6),

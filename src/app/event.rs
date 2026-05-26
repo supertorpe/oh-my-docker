@@ -195,7 +195,7 @@ pub enum AppEvent {
     #[allow(dead_code)]
     RemoveVolume(String),
 
-    CycleSortStat,
+    CycleSortStat(i32),
     ToggleSortDirection,
 }
 
