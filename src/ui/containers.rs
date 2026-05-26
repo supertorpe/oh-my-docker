@@ -165,25 +165,36 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64, colum
                     let is_deleting = state.deleting_containers.contains(&c.id);
                     let is_id_selected = state.selected_ids.contains(&c.id);
 
-                    let state_color = if is_stopping || is_starting || is_deleting {
-                        Color::Yellow
-                    } else {
-                        match c.state.as_str() {
-                            "running" => Color::Green,
-                            "exited" | "dead" => Color::Red,
-                            _ => Color::Yellow,
-                        }
-                    };
+let state_color = if is_stopping || is_starting || is_deleting {
+                Color::Yellow
+            } else {
+                match c.state.as_str() {
+                    "running" => Color::Green,
+                    "exited" | "dead" => Color::Red,
+                    _ => Color::Yellow,
+                }
+            };
 
-                    let state_text = if is_stopping {
-                        "stopping...".to_string()
-                    } else if is_starting {
-                        "starting...".to_string()
-                    } else if is_deleting {
-                        "deleting...".to_string()
-                    } else {
-                        c.status.clone()
-                    };
+            let health_indicator = if !c.health.is_empty() {
+                match c.health.as_str() {
+                    "healthy" => ("● ", Color::Green),
+                    "unhealthy" => ("✗ ", Color::Red),
+                    "starting" => ("◐ ", Color::Yellow),
+                    _ => ("", Color::DarkGray),
+                }
+            } else {
+                ("", Color::DarkGray)
+            };
+
+            let state_text = if is_stopping {
+                format!("{}stopping...", health_indicator.0)
+            } else if is_starting {
+                format!("{}starting...", health_indicator.0)
+            } else if is_deleting {
+                format!("{}deleting...", health_indicator.0)
+            } else {
+                format!("{}{}", health_indicator.0, c.status)
+            };
 
                     let indicator = if is_selected { "▶" } else { " " };
 
@@ -198,9 +209,19 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64, colum
                     if columns.show_image {
                         cells.push(Cell::from(c.image.clone()));
                     }
-                    if columns.show_state {
-                        cells.push(Cell::from(state_text).style(Style::default().fg(state_color)));
+if columns.show_state {
+                let indicator_color = if !c.health.is_empty() {
+                    match c.health.as_str() {
+                        "healthy" => Color::Green,
+                        "unhealthy" => Color::Red,
+                        "starting" => Color::Yellow,
+                        _ => Color::DarkGray,
                     }
+                } else {
+                    state_color
+                };
+                cells.push(Cell::from(state_text).style(Style::default().fg(indicator_color)));
+            }
                     if columns.show_ports {
                         cells.push(Cell::from(c.ports.clone()));
                     }

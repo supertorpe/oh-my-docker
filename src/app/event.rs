@@ -12,6 +12,7 @@ pub struct ContainerSummary {
     pub project: String,
     pub service: String,
     pub compose_file: String,
+    pub health: String,
 }
 
 #[derive(Clone, Debug)]

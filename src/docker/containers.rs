@@ -25,6 +25,10 @@ fn extract_config_file(labels: &Option<std::collections::HashMap<String, String>
     extract_label(labels, "com.docker.compose.config-files")
 }
 
+fn extract_health(_c: &impl std::any::Any) -> String {
+    String::new()
+}
+
 pub async fn list_containers(docker: &Docker) -> Result<Vec<ContainerSummary>> {
     let options = ListContainersOptions::<String> {
         all: true,
@@ -39,16 +43,15 @@ pub async fn list_containers(docker: &Docker) -> Result<Vec<ContainerSummary>> {
         .map(|c| {
             let name = c
                 .names
-                .unwrap_or_default()
-                .first()
+                .as_ref()
+                .and_then(|v| v.first())
                 .cloned()
                 .unwrap_or_default()
                 .trim_start_matches('/')
                 .to_string();
 
-            let ports = c
-                .ports
-                .unwrap_or_default()
+            let ports_vec = c.ports.as_ref().map(|p| p.as_slice()).unwrap_or(&[]);
+    let ports = ports_vec
                 .iter()
                 .map(|p| {
                     let typ = p.typ.as_ref().map(|t| format!("{}", t)).unwrap_or_else(|| "tcp".to_string());
@@ -62,15 +65,16 @@ pub async fn list_containers(docker: &Docker) -> Result<Vec<ContainerSummary>> {
                 .join(", ");
 
             ContainerSummary {
-                id: c.id.unwrap_or_default(),
+                id: c.id.as_ref().map(|s| s.clone()).unwrap_or_default(),
                 name,
-                image: c.image.unwrap_or_default(),
-                state: c.state.unwrap_or_default(),
-                status: c.status.unwrap_or_default(),
+                image: c.image.as_ref().map(|s| s.clone()).unwrap_or_default(),
+                state: c.state.as_ref().map(|s| s.clone()).unwrap_or_default(),
+                status: c.status.as_ref().map(|s| s.clone()).unwrap_or_default(),
                 ports,
                 project: extract_project(&c.labels),
                 service: extract_service(&c.labels),
                 compose_file: extract_config_file(&c.labels),
+                health: extract_health(&c),
             }
         })
         .collect();
