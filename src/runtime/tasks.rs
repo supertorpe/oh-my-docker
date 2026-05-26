@@ -294,62 +294,81 @@ pub fn spawn_prune_unused_images(docker: Docker, tx: UnboundedSender<AppEvent>) 
 
 pub fn spawn_batch_toggle_containers(docker: Docker, tx: UnboundedSender<AppEvent>, ids: Vec<String>) {
     tokio::spawn(async move {
-        let mut stopped = 0u32;
-        let mut started = 0u32;
         let total = ids.len();
-        for id in &ids {
-            let id_str = id.clone();
-            match docker::containers::inspect_container(&docker, &id_str).await {
-                Ok((json, _)) => {
-                    let state = json.get("State").and_then(|s| s.get("Status")).and_then(|s| s.as_str()).unwrap_or("");
-                    if state == "running" {
-                        match docker::containers::stop_container(&docker, &id_str).await {
-                            Ok(()) => {
-                                stopped += 1;
-                                let _ = tx.send(AppEvent::ContainerStopped(id_str));
+
+        let handles: Vec<_> = ids.into_iter().map(|id| {
+            let docker = docker.clone();
+            let tx = tx.clone();
+            tokio::spawn(async move {
+                match docker::containers::inspect_container(&docker, &id).await {
+                    Ok((json, _)) => {
+                        let state = json.get("State").and_then(|s| s.get("Status")).and_then(|s| s.as_str()).unwrap_or("");
+                        if state == "running" {
+                            match docker::containers::stop_container(&docker, &id).await {
+                                Ok(()) => {
+                                    let _ = tx.send(AppEvent::ContainerStopped(id));
+                                    ("stopped", true)
+                                }
+                                Err(e) => {
+                                    let _ = tx.send(AppEvent::Error(format!("Stop {} failed: {}", &id[..12.min(id.len())], e)));
+                                    let _ = tx.send(AppEvent::ContainerStopped(id));
+                                    ("stopped", false)
+                                }
                             }
-                            Err(e) => {
-                                let _ = tx.send(AppEvent::Error(format!("Stop {} failed: {}", &id_str[..12.min(id_str.len())], e)));
-                                let _ = tx.send(AppEvent::ContainerStopped(id_str));
+                        } else if state == "exited" || state == "dead" {
+                            match docker::containers::start_container(&docker, &id).await {
+                                Ok(()) => {
+                                    let _ = tx.send(AppEvent::Info(format!("Container {} started", &id[..12.min(id.len())])));
+                                    let _ = tx.send(AppEvent::ContainerStarted(id));
+                                    ("started", true)
+                                }
+                                Err(e) => {
+                                    let _ = tx.send(AppEvent::Error(format!("Start {} failed: {}", &id[..12.min(id.len())], e)));
+                                    ("started", false)
+                                }
                             }
-                        }
-                    } else if state == "exited" || state == "dead" {
-                        match docker::containers::start_container(&docker, &id_str).await {
-                            Ok(()) => {
-                                started += 1;
-                                let _ = tx.send(AppEvent::Info(format!("Container {} started", &id_str[..12.min(id_str.len())])));
-                                let _ = tx.send(AppEvent::ContainerStarted(id_str));
-                            }
-                            Err(e) => {
-                                let _ = tx.send(AppEvent::Error(format!("Start {} failed: {}", &id_str[..12.min(id_str.len())], e)));
-                            }
+                        } else {
+                            ("skipped", true)
                         }
                     }
+                    Err(e) => {
+                        let _ = tx.send(AppEvent::Error(format!("Inspect {} failed: {}", &id[..12.min(id.len())], e)));
+                        ("errored", false)
+                    }
                 }
-                Err(e) => {
-                    let _ = tx.send(AppEvent::Error(format!("Inspect {} failed: {}", &id_str[..12.min(id_str.len())], e)));
-                }
-            }
-        }
+            })
+        }).collect();
+
+        let results = futures_util::future::join_all(handles).await;
+        let stopped = results.iter().filter_map(|r| r.as_ref().ok()).filter(|(a, _)| *a == "stopped").count();
+        let started = results.iter().filter_map(|r| r.as_ref().ok()).filter(|(a, _)| *a == "started").count();
         let _ = tx.send(AppEvent::Info(format!("Toggled {}/{} containers ({} stopped, {} started)", total, total, stopped, started)));
     });
 }
 
 pub fn spawn_batch_delete_containers(docker: Docker, tx: UnboundedSender<AppEvent>, ids: Vec<String>) {
     tokio::spawn(async move {
-        let mut deleted = 0u32;
         let total = ids.len();
-        for id in &ids {
-            match docker::containers::delete_container(&docker, id).await {
-                Ok(()) => {
-                    deleted += 1;
-                    let _ = tx.send(AppEvent::ContainerDeleted(id.clone()));
+
+        let handles: Vec<_> = ids.into_iter().map(|id| {
+            let docker = docker.clone();
+            let tx = tx.clone();
+            tokio::spawn(async move {
+                match docker::containers::delete_container(&docker, &id).await {
+                    Ok(()) => {
+                        let _ = tx.send(AppEvent::ContainerDeleted(id));
+                        true
+                    }
+                    Err(e) => {
+                        let _ = tx.send(AppEvent::Error(format!("Delete {} failed: {}", &id[..12.min(id.len())], e)));
+                        false
+                    }
                 }
-                Err(e) => {
-                    let _ = tx.send(AppEvent::Error(format!("Delete {} failed: {}", &id[..12.min(id.len())], e)));
-                }
-            }
-        }
+            })
+        }).collect();
+
+        let results = futures_util::future::join_all(handles).await;
+        let deleted = results.iter().filter_map(|r| r.as_ref().ok()).filter(|&&s| s).count();
         let _ = tx.send(AppEvent::Info(format!("Deleted {}/{} containers", deleted, total)));
     });
 }
