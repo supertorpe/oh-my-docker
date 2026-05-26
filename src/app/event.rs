@@ -1,6 +1,7 @@
 use crate::app::mode::Mode;
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct ContainerSummary {
     pub id: String,
     pub name: String,
@@ -9,6 +10,8 @@ pub struct ContainerSummary {
     pub status: String,
     pub ports: String,
     pub project: String,
+    pub service: String,
+    pub compose_file: String,
 }
 
 #[derive(Clone, Debug)]

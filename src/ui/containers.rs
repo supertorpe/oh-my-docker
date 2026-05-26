@@ -250,9 +250,14 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64, colum
                     let check = if is_id_selected { "[x]" } else { "[ ]" };
                     cells.push(Cell::from(check));
                 }
-                if columns.show_name {
-                    cells.push(Cell::from(format!("{} {}", indicator, &c.name)));
-                }
+if columns.show_name {
+                let name_display = if !c.project.is_empty() {
+                    format!("🐳 {} {}", indicator, &c.name)
+                } else {
+                    format!("{} {}", indicator, &c.name)
+                };
+                cells.push(Cell::from(name_display));
+            }
                 if columns.show_image {
                     cells.push(Cell::from(c.image.clone()));
                 }

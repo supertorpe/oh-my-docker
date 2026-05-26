@@ -6,11 +6,23 @@ use serde_json::Value;
 
 use crate::app::event::ContainerSummary;
 
-fn extract_project(labels: &Option<std::collections::HashMap<String, String>>) -> String {
+fn extract_label(labels: &Option<std::collections::HashMap<String, String>>, key: &str) -> String {
     labels
         .as_ref()
-        .and_then(|l| l.get("com.docker.compose.project").map(|s| s.to_string()))
+        .and_then(|l| l.get(key).map(|s| s.to_string()))
         .unwrap_or_default()
+}
+
+fn extract_project(labels: &Option<std::collections::HashMap<String, String>>) -> String {
+    extract_label(labels, "com.docker.compose.project")
+}
+
+fn extract_service(labels: &Option<std::collections::HashMap<String, String>>) -> String {
+    extract_label(labels, "com.docker.compose.service")
+}
+
+fn extract_config_file(labels: &Option<std::collections::HashMap<String, String>>) -> String {
+    extract_label(labels, "com.docker.compose.config-files")
 }
 
 pub async fn list_containers(docker: &Docker) -> Result<Vec<ContainerSummary>> {
@@ -57,6 +69,8 @@ pub async fn list_containers(docker: &Docker) -> Result<Vec<ContainerSummary>> {
                 status: c.status.unwrap_or_default(),
                 ports,
                 project: extract_project(&c.labels),
+                service: extract_service(&c.labels),
+                compose_file: extract_config_file(&c.labels),
             }
         })
         .collect();

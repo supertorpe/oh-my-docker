@@ -108,6 +108,7 @@ fn build_text(details: &DetailsState, containers: &ContainersState) -> Text<'sta
 
     lines.push(Line::from(""));
 
+    push_section_compose(&mut lines, &json);
     push_section_env(&mut lines, &json);
     push_section_volumes(&mut lines, &json);
     push_section_networks(&mut lines, &json);
@@ -246,6 +247,30 @@ fn push_section_labels(lines: &mut Vec<Line<'static>>, json: &Value) {
                 lines.push(Line::from(Span::styled(" LABELS", Style::default().fg(Color::Cyan))));
                 for (k, v) in labels {
                     lines.push(Line::from(format!("  {}={}", k, v.as_str().unwrap_or(""))));
+                }
+                lines.push(Line::from(""));
+            }
+        }
+    }
+}
+
+fn push_section_compose(lines: &mut Vec<Line<'static>>, json: &Value) {
+    if let Some(cfg) = json.get("Config") {
+        if let Some(labels) = cfg.get("Labels").and_then(|v| v.as_object()) {
+            let project = labels.get("com.docker.compose.project").and_then(|s| s.as_str()).unwrap_or("");
+            let service = labels.get("com.docker.compose.service").and_then(|s| s.as_str()).unwrap_or("");
+            let config_files = labels.get("com.docker.compose.config-files").and_then(|s| s.as_str()).unwrap_or("");
+
+            if !project.is_empty() || !service.is_empty() {
+                lines.push(Line::from(Span::styled(" COMPOSE", Style::default().fg(Color::Cyan))));
+                if !project.is_empty() {
+                    lines.push(Line::from(format!("  Project:     {}", project)));
+                }
+                if !service.is_empty() {
+                    lines.push(Line::from(format!("  Service:     {}", service)));
+                }
+                if !config_files.is_empty() {
+                    lines.push(Line::from(format!("  Config:      {}", config_files)));
                 }
                 lines.push(Line::from(""));
             }
