@@ -66,7 +66,7 @@ async fn main() -> Result<()> {
     let mut state = app::state::AppState::new();
     if let Some(ref txt) = search_txt {
         state.containers.filter = txt.clone();
-        state.containers.filter_active = true;
+        state.containers.filter_active = false;
     }
     state.config = config;
     let (event_tx, mut event_rx) = mpsc::unbounded_channel::<app::event::AppEvent>();
