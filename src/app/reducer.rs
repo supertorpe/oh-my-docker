@@ -536,12 +536,14 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             }
         }
         AppEvent::JumpTop => {
+            new_state.events.scroll_offset = new_state.events.buffer.len();
             if let Some(ref mut log) = new_state.logs {
                 log.scroll_offset = log.buffer.len();
                 log.tail = false;
             }
         }
         AppEvent::JumpBottom => {
+            new_state.events.scroll_offset = 0;
             if let Some(ref mut log) = new_state.logs {
                 log.scroll_offset = 0;
                 log.tail = true;
@@ -607,6 +609,9 @@ pub fn reduce(state: AppState, event: AppEvent) -> (AppState, Vec<Command>) {
                 new_state.events.scroll_offset = new_state.events.scroll_offset.saturating_add(delta as usize);
             } else {
                 new_state.events.scroll_offset = new_state.events.scroll_offset.saturating_sub((-delta) as usize);
+            }
+            if new_state.events.scroll_offset > new_state.events.buffer.len() {
+                new_state.events.scroll_offset = new_state.events.buffer.len();
             }
         }
         AppEvent::CloseShell => {

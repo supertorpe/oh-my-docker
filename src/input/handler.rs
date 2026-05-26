@@ -359,18 +359,12 @@ fn handle_events_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         match key.code {
             KeyCode::Char(' ') => Some(AppEvent::ToggleEventsPause),
             KeyCode::Char('e') => Some(AppEvent::ExportEvents),
-            KeyCode::Char('g') => {
-                if state.events.scroll_offset == 0 {
-                    Some(AppEvent::ScrollEvents(10000))
-                } else {
-                    None
-                }
-            }
-            KeyCode::Char('G') => Some(AppEvent::ScrollEvents(-10000)),
-            KeyCode::Char('j') | KeyCode::Down => Some(AppEvent::ScrollEvents(1)),
-            KeyCode::Char('k') | KeyCode::Up => Some(AppEvent::ScrollEvents(-1)),
-            KeyCode::PageUp => Some(AppEvent::ScrollEvents(-10)),
-            KeyCode::PageDown => Some(AppEvent::ScrollEvents(10)),
+            KeyCode::Char('g') => Some(AppEvent::JumpTop),
+            KeyCode::Char('G') => Some(AppEvent::JumpBottom),
+            KeyCode::Char('k') | KeyCode::Up => Some(AppEvent::ScrollEvents(1)),
+            KeyCode::Char('j') | KeyCode::Down => Some(AppEvent::ScrollEvents(-1)),
+            KeyCode::PageUp => Some(AppEvent::ScrollEvents(20)),
+            KeyCode::PageDown => Some(AppEvent::ScrollEvents(-20)),
             KeyCode::Char('/') => Some(AppEvent::ActivateEventsFilter),
             _ => None,
         }
