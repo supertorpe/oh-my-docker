@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::app::event::{AppEvent, Command};
 use crate::app::state::AppState;
 use crate::search::fuzzy::Fuzzy;
@@ -29,6 +31,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             state.containers.items = containers.clone();
             state.containers.loading = false;
             state.containers.docker_connected = true;
+            state.containers.last_updated = Some(Instant::now());
             apply_filter(state);
         }
         AppEvent::SelectContainer(idx) if *idx < state.containers.filtered.len() => {

@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::app::event::{AppEvent, Command};
 use crate::app::state::AppState;
 
@@ -12,6 +14,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                 let excess = state.events.buffer.len() - state.events.max_events;
                 state.events.buffer.drain(0..excess);
             }
+            state.events.last_updated = Some(Instant::now());
         }
         AppEvent::ActivateEventsFilter => {
             state.events.filter_active = true;

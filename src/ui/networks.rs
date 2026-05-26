@@ -9,10 +9,24 @@ use crate::app::state::NetworksState;
 pub fn render(frame: &mut Frame, state: &NetworksState) {
     let area = frame.area();
 
-    let title = if state.loading {
-        " NETWORKS (loading...) ".to_string()
+    let (indicator_char, indicator_color) = if state.loading {
+        ('⠋', Color::Yellow)
     } else {
-        format!(" NETWORKS ({}) ", state.items.len())
+        let (ch, color) = if let Some(instant) = state.last_updated {
+            let elapsed = instant.elapsed();
+            let fresh = std::time::Duration::from_secs(20);
+            let stale = std::time::Duration::from_secs(50);
+            if elapsed < fresh { ('●', Color::Green) }
+            else if elapsed < stale { ('○', Color::Yellow) }
+            else { ('◌', Color::Red) }
+        } else { ('?', Color::DarkGray) };
+        (ch, color)
+    };
+
+    let title = if state.loading {
+        format!(" NETWORKS {} (loading...) ", indicator_char)
+    } else {
+        format!(" NETWORKS {} ({}) ", indicator_char, state.items.len())
     };
 
     let block = Block::default()
@@ -20,7 +34,7 @@ pub fn render(frame: &mut Frame, state: &NetworksState) {
         .title_alignment(Alignment::Center)
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(indicator_color));
 
     let inner = block.inner(area);
 

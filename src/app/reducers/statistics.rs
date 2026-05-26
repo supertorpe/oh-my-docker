@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::app::event::{AppEvent, Command};
 use crate::app::state::{AppState, StatSort};
 
@@ -22,6 +24,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             });
             state.statistics.items = items;
             state.statistics.loading = false;
+            state.statistics.last_updated = Some(Instant::now());
         }
         AppEvent::CycleSortStat(dir) => {
             let variants = [

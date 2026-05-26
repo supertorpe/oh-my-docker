@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::time::Instant;
 use tokio::task::AbortHandle;
 
 use crate::config::OmdockerConfig;
@@ -22,6 +23,7 @@ pub struct ContainersState {
     pub deleting_containers: HashSet<String>,
     pub selection_mode: bool,
     pub selected_ids: HashSet<String>,
+    pub last_updated: Option<Instant>,
 }
 
 impl Default for ContainersState {
@@ -40,6 +42,7 @@ impl Default for ContainersState {
             deleting_containers: HashSet::new(),
             selection_mode: false,
             selected_ids: HashSet::new(),
+            last_updated: None,
         }
     }
 }
@@ -74,6 +77,7 @@ pub struct ImagesState {
     pub filter: String,
     pub filter_active: bool,
     pub loading: bool,
+    pub last_updated: Option<Instant>,
 }
 
 #[derive(Clone, Debug)]
@@ -100,6 +104,7 @@ pub struct EventsState {
     pub filter_active: bool,
     pub scroll_offset: usize,
     pub viewport_height: usize,
+    pub last_updated: Option<Instant>,
 }
 
 impl Default for EventsState {
@@ -111,6 +116,7 @@ impl Default for EventsState {
             filter_active: false,
             scroll_offset: 0,
             viewport_height: 0,
+            last_updated: None,
         }
     }
 }
@@ -143,11 +149,12 @@ pub struct StatisticsState {
     pub loading: bool,
     pub sort_by: StatSort,
     pub sort_ascending: bool,
+    pub last_updated: Option<Instant>,
 }
 
 impl Default for StatisticsState {
     fn default() -> Self {
-        Self { items: Vec::new(), loading: true, sort_by: StatSort::Cpu, sort_ascending: false }
+        Self { items: Vec::new(), loading: true, sort_by: StatSort::Cpu, sort_ascending: false, last_updated: None }
     }
 }
 
@@ -156,6 +163,7 @@ pub struct NetworksState {
     pub items: Vec<NetworkEntry>,
     pub selected: usize,
     pub loading: bool,
+    pub last_updated: Option<Instant>,
 }
 
 impl Default for NetworksState {
@@ -164,6 +172,7 @@ impl Default for NetworksState {
             items: Vec::new(),
             selected: 0,
             loading: true,
+            last_updated: None,
         }
     }
 }
@@ -173,6 +182,7 @@ pub struct VolumesState {
     pub items: Vec<VolumeEntry>,
     pub selected: usize,
     pub loading: bool,
+    pub last_updated: Option<Instant>,
 }
 
 impl Default for VolumesState {
@@ -181,6 +191,7 @@ impl Default for VolumesState {
             items: Vec::new(),
             selected: 0,
             loading: true,
+            last_updated: None,
         }
     }
 }

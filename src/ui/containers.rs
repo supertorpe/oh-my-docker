@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Rect};
 use ratatui::style::{Color, Modifier, Style};
@@ -6,17 +8,44 @@ use ratatui::widgets::{Block, Borders, Cell, Paragraph, BorderType, Row, Table, 
 
 use crate::app::state::ContainersState;
 
+fn staleness_indicator(last_updated: Option<std::time::Instant>, interval_ms: u64) -> (char, Color) {
+    let threshold_fresh = Duration::from_millis(interval_ms * 2);
+    let threshold_stale = Duration::from_millis(interval_ms * 5);
+
+    match last_updated {
+        Some(instant) => {
+            let elapsed = instant.elapsed();
+            if elapsed < threshold_fresh {
+                ('●', Color::Green)
+            } else if elapsed < threshold_stale {
+                ('○', Color::Yellow)
+            } else {
+                ('◌', Color::Red)
+            }
+        }
+        None => ('?', Color::DarkGray),
+    }
+}
+
 pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64) {
     let area = frame.area();
 
-    let title = if state.loading {
-        " CONTAINERS (loading...) ".to_string()
-    } else if !state.filter.is_empty() {
-        format!(" CONTAINERS ({}) FILTER '{}' ", state.filtered.len(), state.filter)
-    } else if state.selection_mode && !state.selected_ids.is_empty() {
-        format!(" CONTAINERS ({}) [{}] ", state.filtered.len(), state.selected_ids.len())
+    let (indicator_char, indicator_color) = if state.loading {
+        ('⠋', Color::Yellow)
+    } else if !state.docker_connected {
+        ('?', Color::Red)
     } else {
-        format!(" CONTAINERS ({}) ", state.filtered.len())
+        staleness_indicator(state.last_updated, 2000)
+    };
+
+    let title = if state.loading {
+        format!(" CONTAINERS {} (loading...) ", indicator_char)
+    } else if !state.filter.is_empty() {
+        format!(" CONTAINERS {} ({}) FILTER '{}' ", indicator_char, state.filtered.len(), state.filter)
+    } else if state.selection_mode && !state.selected_ids.is_empty() {
+        format!(" CONTAINERS {} ({}) [{}] ", indicator_char, state.filtered.len(), state.selected_ids.len())
+    } else {
+        format!(" CONTAINERS {} ({}) ", indicator_char, state.filtered.len())
     };
 
     let block = Block::default()
@@ -24,7 +53,7 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64) {
         .title_alignment(Alignment::Center)
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(indicator_color));
 
     let inner = block.inner(area);
 

@@ -237,12 +237,26 @@ pub fn render_run(frame: &mut Frame, run: &ImageRunState) {
 pub fn render(frame: &mut Frame, state: &ImagesState) {
     let area = frame.area();
 
-    let title = if state.loading {
-        " IMAGES (loading...) ".to_string()
-    } else if !state.filter.is_empty() {
-        format!(" IMAGES ({}) FILTER '{}' ", state.filtered.len(), state.filter)
+    let (indicator_char, indicator_color) = if state.loading {
+        ('⠋', Color::Yellow)
     } else {
-        format!(" IMAGES ({}) ", state.filtered.len())
+        let (ch, color) = if let Some(instant) = state.last_updated {
+            let elapsed = instant.elapsed();
+            let fresh = std::time::Duration::from_secs(20);
+            let stale = std::time::Duration::from_secs(50);
+            if elapsed < fresh { ('●', Color::Green) }
+            else if elapsed < stale { ('○', Color::Yellow) }
+            else { ('◌', Color::Red) }
+        } else { ('?', Color::DarkGray) };
+        (ch, color)
+    };
+
+    let title = if state.loading {
+        format!(" IMAGES {} (loading...) ", indicator_char)
+    } else if !state.filter.is_empty() {
+        format!(" IMAGES {} ({}) FILTER '{}' ", indicator_char, state.filtered.len(), state.filter)
+    } else {
+        format!(" IMAGES {} ({}) ", indicator_char, state.filtered.len())
     };
 
     let block = Block::default()
@@ -250,7 +264,7 @@ pub fn render(frame: &mut Frame, state: &ImagesState) {
         .title_alignment(Alignment::Center)
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(indicator_color));
 
     let inner = block.inner(area);
 

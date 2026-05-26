@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::app::event::{AppEvent, Command, ContainerOpts};
 use crate::app::state::AppState;
 use crate::search::fuzzy::Fuzzy;
@@ -23,6 +25,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
         AppEvent::ImagesUpdated(images) => {
             state.images.items = images.clone();
             state.images.loading = false;
+            state.images.last_updated = Some(Instant::now());
             apply_filter(state);
         }
         AppEvent::SelectImage(idx) if *idx < state.images.filtered.len() => {

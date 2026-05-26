@@ -24,12 +24,26 @@ fn sort_label(sort_by: &StatSort, ascending: bool) -> String {
 pub fn render(frame: &mut Frame, state: &StatisticsState) {
     let area = frame.area();
 
-    let title = if state.loading {
-        " STATISTICS (loading...) ".to_string()
-    } else if state.items.is_empty() {
-        " STATISTICS ".to_string()
+    let (indicator_char, indicator_color) = if state.loading {
+        ('⠋', Color::Yellow)
     } else {
-        format!(" STATISTICS ({}){}", state.items.len(), sort_label(&state.sort_by, state.sort_ascending))
+        let (ch, color) = if let Some(instant) = state.last_updated {
+            let elapsed = instant.elapsed();
+            let fresh = std::time::Duration::from_secs(4);
+            let stale = std::time::Duration::from_secs(10);
+            if elapsed < fresh { ('●', Color::Green) }
+            else if elapsed < stale { ('○', Color::Yellow) }
+            else { ('◌', Color::Red) }
+        } else { ('?', Color::DarkGray) };
+        (ch, color)
+    };
+
+    let title = if state.loading {
+        format!(" STATISTICS {} (loading...) ", indicator_char)
+    } else if state.items.is_empty() {
+        format!(" STATISTICS {} ", indicator_char)
+    } else {
+        format!(" STATISTICS {} ({}){}", indicator_char, state.items.len(), sort_label(&state.sort_by, state.sort_ascending))
     };
 
     let block = Block::default()
@@ -37,7 +51,7 @@ pub fn render(frame: &mut Frame, state: &StatisticsState) {
         .title_alignment(Alignment::Center)
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(indicator_color));
 
     let inner = block.inner(area);
 
