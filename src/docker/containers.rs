@@ -17,14 +17,6 @@ fn extract_project(labels: &Option<std::collections::HashMap<String, String>>) -
     extract_label(labels, "com.docker.compose.project")
 }
 
-fn extract_service(labels: &Option<std::collections::HashMap<String, String>>) -> String {
-    extract_label(labels, "com.docker.compose.service")
-}
-
-fn extract_config_file(labels: &Option<std::collections::HashMap<String, String>>) -> String {
-    extract_label(labels, "com.docker.compose.config-files")
-}
-
 pub async fn list_containers(docker: &Docker) -> Result<Vec<ContainerSummary>> {
     let options = ListContainersOptions::<String> {
         all: true,
@@ -77,8 +69,6 @@ pub async fn list_containers(docker: &Docker) -> Result<Vec<ContainerSummary>> {
                 status: c.status.as_ref().map(|s| s.clone()).unwrap_or_default(),
                 ports,
                 project: extract_project(&c.labels),
-                service: extract_service(&c.labels),
-                compose_file: extract_config_file(&c.labels),
                 health,
             }
         })

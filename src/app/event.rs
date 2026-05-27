@@ -9,8 +9,6 @@ pub struct ContainerSummary {
     pub status: String,
     pub ports: String,
     pub project: String,
-    pub service: String,
-    pub compose_file: String,
     pub health: String,
 }
 
