@@ -4,10 +4,7 @@ A keyboard-driven Docker TUI (Terminal User Interface) written in Rust.
 
 Fast, minimal, and built for ops workflows — inspired by k9s, lazygit, and htop.
 
-## View in action
-
-[<img src="https://img.youtube.com/vi/l9wLgjm5CNo/hqdefault.jpg" width="600" height="300"
-/>](https://www.youtube.com/embed/l9wLgjm5CNo)
+[<img src="./img/containers.png" width="1261" />]
 
 ## Quick Start
 
