@@ -230,5 +230,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-universal-apple-darwin
-          path: dist/${PKG_NAME}_${{ inputs.version }}_universal-apple-darwin.tar.gz
+          path: dist/${{ env.PKG_NAME }}_${{ inputs.version }}_universal-apple-darwin.tar.gz # <--- Using GitHub Env syntax
           if-no-files-found: error
