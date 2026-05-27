@@ -75,7 +75,7 @@ jobs:
             target: aarch64-unknown-linux-musl
             ext: ''
             archive: tar.gz
-            cross: true
+            cross: false # Fixed: Native build on ARM runner instead of cross-compiling via Docker
 
           # macOS
           - os: macos-14
@@ -118,9 +118,11 @@ jobs:
         if: matrix.cross
         run: cargo install cross
 
-      - name: Install cross
-        if: matrix.cross
-        run: cargo install cross
+      - name: Install musl target tools
+        if: matrix.target == 'aarch64-unknown-linux-musl'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
 
       - name: Setup Linux dependencies
         if: matrix.os == 'ubuntu-22.04'
