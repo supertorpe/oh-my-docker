@@ -5,11 +5,7 @@ use crate::app::state::AppState;
 pub fn handle_key_with_clipboard(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('y') {
         if let Some(n) = state.networks.items.get(state.networks.selected) {
-            if crate::util::copy_to_clipboard(&n.id) {
-                return Some(AppEvent::Info(format!("Network ID copied to clipboard")));
-            } else {
-                return Some(AppEvent::Info(format!("Failed to copy to clipboard - install xclip, wl-copy, or xsel")));
-            }
+            return crate::app::handlers::clipboard_copy(&n.id);
         }
     }
     if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('o') {

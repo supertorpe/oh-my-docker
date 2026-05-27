@@ -5,11 +5,7 @@ use crate::app::state::AppState;
 pub fn handle_key_with_clipboard(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('y') {
         if let Some(v) = state.volumes.items.get(state.volumes.selected) {
-            if crate::util::copy_to_clipboard(&v.name) {
-                return Some(AppEvent::Info(format!("Volume name copied to clipboard")));
-            } else {
-                return Some(AppEvent::Info(format!("Failed to copy to clipboard - install xclip, wl-copy, or xsel")));
-            }
+            return crate::app::handlers::clipboard_copy(&v.name);
         }
     }
     if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('o') {

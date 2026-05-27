@@ -84,11 +84,7 @@ pub fn handle_key_with_clipboard(key: KeyEvent, state: &AppState) -> Option<AppE
         }
         if let Some(&idx) = state.images.filtered.get(state.images.selected) {
             if let Some(img) = state.images.items.get(idx) {
-                if crate::util::copy_to_clipboard(&img.id) {
-                    return Some(AppEvent::Info(format!("Image ID copied to clipboard")));
-                } else {
-                    return Some(AppEvent::Info(format!("Failed to copy to clipboard - install xclip, wl-copy, or xsel")));
-                }
+                return crate::app::handlers::clipboard_copy(&img.id);
             }
         }
     }

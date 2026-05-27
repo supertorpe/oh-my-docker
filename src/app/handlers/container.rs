@@ -143,11 +143,7 @@ pub fn handle_key_with_clipboard(key: KeyEvent, state: &AppState) -> Option<AppE
         if let Some(c) = state.containers.filtered.get(state.containers.selected)
             .and_then(|&idx| state.containers.items.get(idx))
         {
-            if crate::util::copy_to_clipboard(&c.id) {
-                return Some(AppEvent::Info(format!("Container ID copied to clipboard")));
-            } else {
-                return Some(AppEvent::Info(format!("Failed to copy to clipboard - install xclip, wl-copy, or xsel")));
-            }
+            return crate::app::handlers::clipboard_copy(&c.id);
         }
     }
     if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('o') {
