@@ -111,8 +111,9 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
+
+      - name: Install compilation target
+        run: rustup target add ${{ matrix.target }}
 
       - name: Install cross
         if: matrix.cross
