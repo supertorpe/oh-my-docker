@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::time::Duration;
 
 use ratatui::Frame;
@@ -28,6 +29,11 @@ fn staleness_indicator(last_updated: Option<std::time::Instant>, interval_ms: u6
     }
 }
 
+fn project_group_header(group_name: &str, count: usize) -> Row<'static> {
+    let header = format!(" {} ({}) ", group_name, count);
+    Row::new(vec![Cell::from(header).style(Style::default().fg(Color::Yellow))])
+}
+
 pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64, columns: &ContainerColumns) {
     let area = frame.area();
 
@@ -42,7 +48,7 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64, colum
     let title = if state.loading {
         format!(" CONTAINERS {} (loading...) ", indicator_char)
     } else if !state.filter.is_empty() {
-        format!(" CONTAINERS {} ({}) FILTER '{}' ", indicator_char, state.filtered.len(), state.filter)
+        format!(" CONTAINERS {} ({}/{}) FILTER '{}' ", indicator_char, state.filtered.len(), state.items.len(), state.filter)
     } else if state.selection_mode && !state.selected_ids.is_empty() {
         format!(" CONTAINERS {} ({}) [{}] ", indicator_char, state.filtered.len(), state.selected_ids.len())
     } else {
@@ -77,7 +83,7 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64, colum
         let text = Text::from(vec![
             Line::from(Span::styled("  No containers found", Style::default().fg(Color::Yellow))),
             Line::from(""),
-            Line::from(Span::styled("  j/k  navigate  Enter  details  /  search  l  logs  s  shell  ?  help", Style::default().fg(Color::DarkGray))),
+            Line::from(Span::styled("  j/k ↓↑  Enter:details  /:search  l:logs  s:shell  ?:help", Style::default().fg(Color::DarkGray))),
         ]);
         frame.render_widget(Paragraph::new(text).block(block), area);
         return;
@@ -97,6 +103,11 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64, colum
             Line::from(Span::styled(hint, Style::default().fg(Color::DarkGray))),
         ]);
         frame.render_widget(Paragraph::new(text).block(block), area);
+        return;
+    }
+
+    if state.show_column_picker {
+        render_column_picker(frame, area, columns, state.column_picker_selection);
         return;
     }
 
@@ -134,109 +145,20 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64, colum
         header_cells.iter().map(|h| Cell::from(*h).style(header_style))
     ).height(1);
 
-   let rows: Vec<Row> = if state.group_by_project {
-        let mut grouped: std::collections::HashMap<String, Vec<usize>> = std::collections::HashMap::new();
-        for &idx in &state.filtered {
-            let project = &state.items[idx].project;
-            grouped.entry(project.clone()).or_default().push(idx);
-        }
-        let mut all_rows = Vec::new();
-        let mut project_names: Vec<String> = grouped.keys().cloned().collect();
-        project_names.sort();
-        for project in project_names {
-            let is_expanded = state.expanded_projects.contains(&project);
-            let count = grouped[&project].len();
-            let header = if is_expanded {
-                format!("▾ {} ({})", project, count)
-            } else {
-                format!("▸ {} ({})", project, count)
-            };
-            let header_cells: Vec<Cell> = vec![Cell::from(header)]
-                .into_iter()
-                .map(|c| c.style(Style::default().fg(Color::Yellow)))
-                .collect();
-            all_rows.push(Row::new(header_cells));
-            if is_expanded {
-                for &idx in &grouped[&project] {
-                    let c = &state.items[idx];
-                    let is_selected = state.filtered.get(state.selected) == Some(&idx);
-                    let is_stopping = state.stopping_containers.contains(&c.id);
-                    let is_starting = state.starting_containers.contains(&c.id);
-                    let is_deleting = state.deleting_containers.contains(&c.id);
-                    let is_id_selected = state.selected_ids.contains(&c.id);
-
-let state_color = if is_stopping || is_starting || is_deleting {
-                Color::Yellow
-            } else {
-                match c.state.as_str() {
-                    "running" => Color::Green,
-                    "exited" | "dead" => Color::Red,
-                    _ => Color::Yellow,
-                }
-            };
-
-            let health_indicator = if !c.health.is_empty() {
-                match c.health.as_str() {
-                    "healthy" => ("● ", Color::Green),
-                    "unhealthy" => ("✗ ", Color::Red),
-                    "starting" => ("◐ ", Color::Yellow),
-                    _ => ("", Color::DarkGray),
-                }
-            } else {
-                ("", Color::DarkGray)
-            };
-
-            let state_text = if is_stopping {
-                format!("{}stopping...", health_indicator.0)
-            } else if is_starting {
-                format!("{}starting...", health_indicator.0)
-            } else if is_deleting {
-                format!("{}deleting...", health_indicator.0)
-            } else {
-                format!("{}{}", health_indicator.0, c.status)
-            };
-
-                    let indicator = if is_selected { "▶" } else { " " };
-
-                    let mut cells: Vec<Cell> = Vec::new();
-                    if state.selection_mode {
-                        let check = if is_id_selected { "[x]" } else { "[ ]" };
-                        cells.push(Cell::from(check));
-                    }
-                    if columns.show_name {
-                        cells.push(Cell::from(format!("    {} {}", indicator, &c.name)));
-                    }
-                    if columns.show_image {
-                        cells.push(Cell::from(c.image.clone()));
-                    }
-if columns.show_state {
-                let indicator_color = if !c.health.is_empty() {
-                    match c.health.as_str() {
-                        "healthy" => Color::Green,
-                        "unhealthy" => Color::Red,
-                        "starting" => Color::Yellow,
-                        _ => Color::DarkGray,
-                    }
-                } else {
-                    state_color
-                };
-                cells.push(Cell::from(state_text).style(Style::default().fg(indicator_color)));
-            }
-                    if columns.show_ports {
-                        cells.push(Cell::from(c.ports.clone()));
-                    }
-
-                    let row_style = if is_selected { selected_bg } else { Style::default() };
-                    all_rows.push(Row::new(cells).style(row_style).height(1));
-                }
-            }
-        }
-        all_rows
-    } else {
-        state
-            .filtered
-            .iter()
-            .map(|&idx| {
+    // Always group by project
+    let mut grouped: HashMap<String, Vec<usize>> = HashMap::new();
+    for &idx in &state.filtered {
+        let project = &state.items[idx].project;
+        grouped.entry(if project.is_empty() { "Ungrouped".to_string() } else { project.clone() }).or_default().push(idx);
+    }
+    let all_rows: Vec<Row> = {
+        let mut rows = Vec::new();
+        let mut group_names: Vec<String> = grouped.keys().cloned().collect();
+        group_names.sort();
+        for group_name in group_names {
+            let indices = &grouped[&group_name];
+            rows.push(project_group_header(&group_name, indices.len()));
+            for &idx in indices {
                 let c = &state.items[idx];
                 let is_selected = state.filtered.get(state.selected) == Some(&idx);
                 let is_stopping = state.stopping_containers.contains(&c.id);
@@ -254,14 +176,25 @@ if columns.show_state {
                     }
                 };
 
-                let state_text = if is_stopping {
-                    "stopping...".to_string()
-                } else if is_starting {
-                    "starting...".to_string()
-                } else if is_deleting {
-                    "deleting...".to_string()
+                let health_indicator = if !c.health.is_empty() {
+                    match c.health.as_str() {
+                        "healthy" => ("● ", Color::Green),
+                        "unhealthy" => ("✗ ", Color::Red),
+                        "starting" => ("◐ ", Color::Yellow),
+                        _ => ("", Color::DarkGray),
+                    }
                 } else {
-                    c.status.clone()
+                    ("", Color::DarkGray)
+                };
+
+                let state_text = if is_stopping {
+                    format!("{}stopping...", health_indicator.0)
+                } else if is_starting {
+                    format!("{}starting...", health_indicator.0)
+                } else if is_deleting {
+                    format!("{}deleting...", health_indicator.0)
+                } else {
+                    format!("{}{}", health_indicator.0, c.status)
                 };
 
                 let indicator = if is_selected { "▶" } else { " " };
@@ -271,34 +204,42 @@ if columns.show_state {
                     let check = if is_id_selected { "[x]" } else { "[ ]" };
                     cells.push(Cell::from(check));
                 }
-if columns.show_name {
-                let name_display = if !c.project.is_empty() {
-                    format!("🐳 {} {}", indicator, &c.name)
-                } else {
-                    format!("{} {}", indicator, &c.name)
-                };
-                cells.push(Cell::from(name_display));
-            }
+                if columns.show_name {
+                    let name_display = if !c.project.is_empty() {
+                        format!("🐳 {} {}", indicator, &c.name)
+                    } else {
+                        format!("{} {}", indicator, &c.name)
+                    };
+                    cells.push(Cell::from(name_display));
+                }
                 if columns.show_image {
                     cells.push(Cell::from(c.image.clone()));
                 }
                 if columns.show_state {
-                    cells.push(Cell::from(state_text).style(Style::default().fg(state_color)));
+                    let indicator_color = if !c.health.is_empty() {
+                        match c.health.as_str() {
+                            "healthy" => Color::Green,
+                            "unhealthy" => Color::Red,
+                            "starting" => Color::Yellow,
+                            _ => Color::DarkGray,
+                        }
+                    } else {
+                        state_color
+                    };
+                    cells.push(Cell::from(state_text).style(Style::default().fg(indicator_color)));
                 }
                 if columns.show_ports {
                     cells.push(Cell::from(c.ports.clone()));
                 }
 
                 let row_style = if is_selected { selected_bg } else { Style::default() };
-
-                Row::new(cells)
-                    .style(row_style)
-                    .height(1)
-            })
-            .collect()
+                rows.push(Row::new(cells).style(row_style).height(1));
+            }
+        }
+        rows
     };
 
-    let table = Table::new(rows, widths)
+    let table = Table::new(all_rows, widths)
         .header(header_row)
         .block(block);
 
@@ -312,6 +253,46 @@ if columns.show_name {
     render_footer(frame, inner, state.selection_mode);
 }
 
+fn render_column_picker(frame: &mut Frame, area: Rect, columns: &ContainerColumns, selection: usize) {
+    use ratatui::widgets::Clear;
+    let picker_area = Rect {
+        x: area.width / 2 - 15,
+        y: area.height / 2 - 4,
+        width: 30,
+        height: 8,
+    };
+    let mut lines = vec![
+        Line::from(Span::styled(" COLUMNS (Space to toggle) ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))),
+        Line::from(""),
+    ];
+    for (i, (label, active)) in [
+        ("Name", columns.show_name),
+        ("Image", columns.show_image),
+        ("State", columns.show_state),
+        ("Ports", columns.show_ports),
+    ].iter().enumerate() {
+        let check = if *active { "[x]" } else { "[ ]" };
+        let style = if i == selection {
+            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::White)
+        };
+        lines.push(Line::from(Span::styled(
+            format!("  {} {}", check, label),
+            style,
+        )));
+    }
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(" Esc: close", Style::default().fg(Color::DarkGray))));
+    frame.render_widget(Clear, picker_area);
+    frame.render_widget(
+        Paragraph::new(Text::from(lines))
+            .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(Color::Cyan)))
+            .style(Style::default().fg(Color::White)),
+        picker_area,
+    );
+}
+
 fn render_footer(frame: &mut Frame, area: Rect, selection_mode: bool) {
     let footer = Rect {
         x: area.x,
@@ -320,9 +301,9 @@ fn render_footer(frame: &mut Frame, area: Rect, selection_mode: bool) {
         height: 1,
     };
     let text = if selection_mode {
-        " Space:toggle/select  Ctrl+a:all  t:stop  d:delete  Esc:exit mode  j/k ↓↑  /search  Enter:details  l:logs  s:shell  ?:help "
+        " Space:toggle/select  Ctrl+a:all  t:stop  d:delete  Esc:exit mode  j/k ↓↑  /search  Enter:details  l:logs  s:shell  ?:help  ^O:columns "
     } else {
-        " Space:select mode  j/k ↓↑  /search  Enter:details  l:logs  s:shell  r:restart  t:stop/start  d:delete  ?:help "
+        " Space:select mode  j/k ↓↑  /search  Enter:details  l:logs  s:shell  r:restart  t:stop/start  d:delete  ?:help  ^O:columns "
     };
     frame.render_widget(
         Paragraph::new(text).style(Style::default().fg(Color::DarkGray)),

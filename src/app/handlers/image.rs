@@ -3,7 +3,23 @@ use crate::app::event::{AppEvent, ConfirmAction, ImageRunField};
 use crate::app::state::AppState;
 
 pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
-    if state.images.filter_active {
+    if state.images.show_column_picker {
+        match (key.code, key.modifiers) {
+            (KeyCode::Esc, _) => Some(AppEvent::ToggleColumnPicker),
+            (KeyCode::Char(' '), _) | (KeyCode::Enter, _) => {
+                let names = ["repository", "tag", "id", "size"];
+                let idx = state.images.column_picker_selection.min(names.len() - 1);
+                Some(AppEvent::ToggleColumn(names[idx].to_string()))
+            }
+            _ if state.keymap.is_navigate_down(key.code, key.modifiers) || key.code == KeyCode::Down => {
+                Some(AppEvent::ToggleColumn("next".to_string()))
+            }
+            _ if state.keymap.is_navigate_up(key.code, key.modifiers) || key.code == KeyCode::Up => {
+                Some(AppEvent::ToggleColumn("prev".to_string()))
+            }
+            _ => None,
+        }
+    } else if state.images.filter_active {
         match (key.code, key.modifiers) {
             (KeyCode::Backspace, _) | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
                 let new_q = state.images.filter.chars().take(state.images.filter.chars().count().saturating_sub(1)).collect();
@@ -76,53 +92,31 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
 }
 
 pub fn handle_key_with_clipboard(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
-    use crossterm::event::KeyModifiers;
     if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('y') {
         if state.images.filter_active {
             return handle_key(key, state);
         }
         if let Some(&idx) = state.images.filtered.get(state.images.selected) {
             if let Some(img) = state.images.items.get(idx) {
-                let _ = crate::util::copy_to_clipboard(&img.id);
-                return Some(AppEvent::Info(format!("Image ID copied to clipboard")));
+                if crate::util::copy_to_clipboard(&img.id) {
+                    return Some(AppEvent::Info(format!("Image ID copied to clipboard")));
+                } else {
+                    return Some(AppEvent::Info(format!("Failed to copy to clipboard - install xclip, wl-copy, or xsel")));
+                }
             }
         }
+    }
+    if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('o') {
+        return Some(AppEvent::ToggleColumnPicker);
     }
     handle_key(key, state)
 }
 
 pub fn handle_image_run_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     match (key.code, key.modifiers) {
-        (KeyCode::Backspace, _) | (KeyCode::Char('h'), KeyModifiers::CONTROL) => state.navigation.image_run.as_ref().map(|run| {
-            let (val, field) = match run.field_focus {
-                0 => (run.command.as_str(), ImageRunField::Command),
-                1 => (run.shell.as_str(), ImageRunField::Shell),
-                2 => (run.user.as_str(), ImageRunField::User),
-                3 => (run.workdir.as_str(), ImageRunField::Workdir),
-                4 => (run.env_vars.as_str(), ImageRunField::EnvVars),
-                5 => (run.port_mapping.as_str(), ImageRunField::PortMapping),
-                6 => (run.volumes.as_str(), ImageRunField::Volumes),
-                _ => (run.container_name.as_str(), ImageRunField::ContainerName),
-            };
-            let new_val: String = val.chars().take(val.chars().count().saturating_sub(1)).collect();
-            AppEvent::ImageRunFieldUpdate(field, new_val)
-        }),
-        (KeyCode::Esc, _) => Some(AppEvent::Back),
-        (KeyCode::Enter, _) => Some(AppEvent::ImageRunSubmit),
-        (KeyCode::Tab, _) | (KeyCode::Down, _) => Some(AppEvent::ImageRunFocusNext),
-        (KeyCode::Up, _) => Some(AppEvent::ImageRunFocusPrev),
-        (KeyCode::Char(c), KeyModifiers::NONE) | (KeyCode::Char(c), KeyModifiers::SHIFT) => state.navigation.image_run.as_ref().map(|run| {
-            if c == 'a' {
-                if run.field_focus == 8 {
-                    return AppEvent::ImageRunToggleAutoremove;
-                }
-                if run.field_focus == 14 {
-                    return AppEvent::ImageRunFieldUpdate(ImageRunField::Privileged, String::new());
-                }
-            }
-            if c == 'a' && run.field_focus == 8 && !run.show_advanced {
-                return AppEvent::ImageRunToggleAdvanced;
-            }
+        (KeyCode::Backspace, _) | (KeyCode::Char('h'), KeyModifiers::CONTROL) => state.navigation.image_run.as_ref().and_then(|run| {
+            let is_text = matches!(run.field_focus, 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 9 | 10 | 11 | 12 | 13);
+            if !is_text { return None; }
             let (val, field) = match run.field_focus {
                 0 => (run.command.as_str(), ImageRunField::Command),
                 1 => (run.shell.as_str(), ImageRunField::Shell),
@@ -132,14 +126,62 @@ pub fn handle_image_run_key(key: KeyEvent, state: &AppState) -> Option<AppEvent>
                 5 => (run.port_mapping.as_str(), ImageRunField::PortMapping),
                 6 => (run.volumes.as_str(), ImageRunField::Volumes),
                 7 => (run.container_name.as_str(), ImageRunField::ContainerName),
-                8 => (run.restart_policy.as_str(), ImageRunField::RestartPolicy),
-                9 => (run.memory_limit.as_str(), ImageRunField::MemoryLimit),
-                10 => (run.cpu_limit.as_str(), ImageRunField::CpuLimit),
-                11 => (run.network.as_str(), ImageRunField::Network),
-                12 => (run.labels.as_str(), ImageRunField::Labels),
-                _ => (run.container_name.as_str(), ImageRunField::ContainerName),
+                9 => (run.restart_policy.as_str(), ImageRunField::RestartPolicy),
+                10 => (run.memory_limit.as_str(), ImageRunField::MemoryLimit),
+                11 => (run.cpu_limit.as_str(), ImageRunField::CpuLimit),
+                12 => (run.network.as_str(), ImageRunField::Network),
+                13 => (run.labels.as_str(), ImageRunField::Labels),
+                _ => return None,
             };
-            AppEvent::ImageRunFieldUpdate(field, format!("{}{}", val, c))
+            let new_val: String = val.chars().take(val.chars().count().saturating_sub(1)).collect();
+            Some(AppEvent::ImageRunFieldUpdate(field, new_val))
+        }),
+        (KeyCode::Esc, _) => Some(AppEvent::Back),
+        (KeyCode::Enter, _) => Some(AppEvent::ImageRunSubmit),
+        (KeyCode::Tab, _) | (KeyCode::Down, _) => Some(AppEvent::ImageRunFocusNext),
+        (KeyCode::Up, _) => Some(AppEvent::ImageRunFocusPrev),
+        (KeyCode::Char('a'), KeyModifiers::NONE) | (KeyCode::Char('a'), KeyModifiers::SHIFT) => {
+            state.navigation.image_run.as_ref().and_then(|run| {
+                match run.field_focus {
+                    8 => Some(AppEvent::ImageRunToggleAutoremove),
+                    9 => {
+                        let next = match run.restart_policy.as_str() {
+                            "" => "always",
+                            "always" => "on-failure",
+                            "on-failure" => "unless-stopped",
+                            "unless-stopped" | "no" => "",
+                            _ => "",
+                        };
+                        Some(AppEvent::ImageRunFieldUpdate(ImageRunField::RestartPolicy, next.to_string()))
+                    }
+                    14 => Some(AppEvent::ImageRunFieldUpdate(ImageRunField::Privileged, String::new())),
+                    _ => None,
+                }
+            })
+        }
+        (KeyCode::Char('a'), KeyModifiers::CONTROL) => {
+            Some(AppEvent::ImageRunToggleAdvanced)
+        }
+        (KeyCode::Char(c), KeyModifiers::NONE) | (KeyCode::Char(c), KeyModifiers::SHIFT) => state.navigation.image_run.as_ref().and_then(|run| {
+            let is_text = matches!(run.field_focus, 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 9 | 10 | 11 | 12 | 13);
+            if !is_text { return None; }
+            let (val, field) = match run.field_focus {
+                0 => (run.command.as_str(), ImageRunField::Command),
+                1 => (run.shell.as_str(), ImageRunField::Shell),
+                2 => (run.user.as_str(), ImageRunField::User),
+                3 => (run.workdir.as_str(), ImageRunField::Workdir),
+                4 => (run.env_vars.as_str(), ImageRunField::EnvVars),
+                5 => (run.port_mapping.as_str(), ImageRunField::PortMapping),
+                6 => (run.volumes.as_str(), ImageRunField::Volumes),
+                7 => (run.container_name.as_str(), ImageRunField::ContainerName),
+                9 => (run.restart_policy.as_str(), ImageRunField::RestartPolicy),
+                10 => (run.memory_limit.as_str(), ImageRunField::MemoryLimit),
+                11 => (run.cpu_limit.as_str(), ImageRunField::CpuLimit),
+                12 => (run.network.as_str(), ImageRunField::Network),
+                13 => (run.labels.as_str(), ImageRunField::Labels),
+                _ => return None,
+            };
+            Some(AppEvent::ImageRunFieldUpdate(field, format!("{}{}", val, c)))
         }),
         _ => None,
     }

@@ -143,7 +143,6 @@ pub enum AppEvent {
     ToggleSelectContainer(String),
     SelectAllContainers,
     BatchToggleContainers(Vec<String>),
-    ToggleGroupByProject,
 
     LogLines(String, Vec<LogEntry>),
     TogglePause,
@@ -195,6 +194,9 @@ pub enum AppEvent {
 
     CycleSortStat(i32),
     ToggleSortDirection,
+
+    ToggleColumnPicker,
+    ToggleColumn(String),
 }
 
 #[derive(Clone, Debug)]

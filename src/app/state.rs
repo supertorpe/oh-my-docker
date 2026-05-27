@@ -24,8 +24,8 @@ pub struct ContainersState {
     pub selection_mode: bool,
     pub selected_ids: HashSet<String>,
     pub last_updated: Option<Instant>,
-    pub group_by_project: bool,
-    pub expanded_projects: HashSet<String>,
+    pub show_column_picker: bool,
+    pub column_picker_selection: usize,
 }
 
 impl Default for ContainersState {
@@ -45,8 +45,8 @@ impl Default for ContainersState {
             selection_mode: false,
             selected_ids: HashSet::new(),
             last_updated: None,
-            group_by_project: false,
-            expanded_projects: HashSet::new(),
+            show_column_picker: false,
+            column_picker_selection: 0,
         }
     }
 }
@@ -82,6 +82,8 @@ pub struct ImagesState {
     pub filter_active: bool,
     pub loading: bool,
     pub last_updated: Option<Instant>,
+    pub show_column_picker: bool,
+    pub column_picker_selection: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -175,6 +177,8 @@ pub struct NetworksState {
     pub selected: usize,
     pub loading: bool,
     pub last_updated: Option<Instant>,
+    pub show_column_picker: bool,
+    pub column_picker_selection: usize,
 }
 
 impl Default for NetworksState {
@@ -184,6 +188,8 @@ impl Default for NetworksState {
             selected: 0,
             loading: true,
             last_updated: None,
+            show_column_picker: false,
+            column_picker_selection: 0,
         }
     }
 }
@@ -194,6 +200,8 @@ pub struct VolumesState {
     pub selected: usize,
     pub loading: bool,
     pub last_updated: Option<Instant>,
+    pub show_column_picker: bool,
+    pub column_picker_selection: usize,
 }
 
 impl Default for VolumesState {
@@ -203,6 +211,8 @@ impl Default for VolumesState {
             selected: 0,
             loading: true,
             last_updated: None,
+            show_column_picker: false,
+            column_picker_selection: 0,
         }
     }
 }

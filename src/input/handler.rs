@@ -27,6 +27,10 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     let in_input_mode = state.containers.filter_active
         || state.images.filter_active
         || state.events.filter_active
+        || state.containers.show_column_picker
+        || state.images.show_column_picker
+        || state.networks.show_column_picker
+        || state.volumes.show_column_picker
         || state.navigation.logs.as_ref().map(|l| l.search_active).unwrap_or(false)
         || state.navigation.shell_config.is_some()
         || state.navigation.image_run.is_some();
@@ -40,10 +44,10 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     let mods = key.modifiers;
 
     // Check global actions using keymap
-    if km.quit.matches(code, mods) && !in_input_mode {
+    if km.is_quit(code, mods) && !in_input_mode {
         return Some(AppEvent::Quit);
     }
-    if km.back.matches(code, mods) && !in_input_mode {
+    if km.is_back(code, mods) && !in_input_mode {
         if state.containers.selection_mode {
             // Do nothing in selection mode for back
         } else if *state.navigation.mode_stack.current() == Mode::Help {
@@ -53,7 +57,7 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         }
         return None;
     }
-    if km.help.matches(code, mods) && !in_input_mode {
+    if km.is_help(code, mods) && !in_input_mode {
         return Some(AppEvent::ShowHelp);
     }
 

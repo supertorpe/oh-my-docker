@@ -103,23 +103,44 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
         AppEvent::ImageRunToggleAdvanced => {
             if let Some(ref mut run) = state.navigation.image_run {
                 run.show_advanced = !run.show_advanced;
-                run.field_focus = if run.show_advanced { 8 } else { 0 };
+                // Keep current field if possible; if going from advanced to basic and field is >= 9, reset to 0
+                if !run.show_advanced && run.field_focus >= 9 {
+                    run.field_focus = 0;
+                }
             }
         }
         AppEvent::ImageRunFocusNext => {
             if let Some(ref mut run) = state.navigation.image_run {
-                let max_fields = if run.show_advanced { 14 } else { 8 };
+                let max_fields = if run.show_advanced { 14 } else { 9 };
                 run.field_focus = (run.field_focus + 1) % max_fields;
             }
         }
         AppEvent::ImageRunFocusPrev => {
             if let Some(ref mut run) = state.navigation.image_run {
-                let max_fields = if run.show_advanced { 14 } else { 8 };
+                let max_fields = if run.show_advanced { 14 } else { 9 };
                 run.field_focus = if run.field_focus == 0 {
                     max_fields - 1
                 } else {
                     run.field_focus.saturating_sub(1)
                 };
+            }
+        }
+        AppEvent::ToggleColumnPicker => {
+            state.images.show_column_picker = !state.images.show_column_picker;
+        }
+        AppEvent::ToggleColumn(name) => {
+            if state.images.show_column_picker {
+                let col_count = 4;
+                match name.as_str() {
+                    "next" => state.images.column_picker_selection = (state.images.column_picker_selection + 1) % col_count,
+                    "prev" => state.images.column_picker_selection = (state.images.column_picker_selection + col_count - 1) % col_count,
+                    "repository" => state.config.image_columns.show_repository = !state.config.image_columns.show_repository,
+                    "tag" => state.config.image_columns.show_tag = !state.config.image_columns.show_tag,
+                    "id" => state.config.image_columns.show_id = !state.config.image_columns.show_id,
+                    "size" => state.config.image_columns.show_size = !state.config.image_columns.show_size,
+                    _ => {}
+                }
+                commands.push(Command::SaveConfig);
             }
         }
         AppEvent::ImageRunSubmit => {

@@ -19,6 +19,17 @@ fn apply_filter(state: &mut AppState) {
             state.containers.filtered = results.into_iter().map(|(i, _)| i).collect();
         }
     }
+    // Reorder filtered to match grouped display order
+    let mut grouped: std::collections::HashMap<String, Vec<usize>> = std::collections::HashMap::new();
+    for &idx in &state.containers.filtered {
+        if let Some(c) = state.containers.items.get(idx) {
+            let group = if c.project.is_empty() { "Ungrouped" } else { &c.project };
+            grouped.entry(group.to_string()).or_default().push(idx);
+        }
+    }
+    let mut group_names: Vec<String> = grouped.keys().cloned().collect();
+    group_names.sort();
+    state.containers.filtered = group_names.into_iter().flat_map(|g| grouped.remove(&g).unwrap()).collect();
     if state.containers.selected >= state.containers.filtered.len() {
         state.containers.selected = state.containers.filtered.len().saturating_sub(1);
     }
@@ -83,10 +94,22 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                 }
             }
         }
-        AppEvent::ToggleGroupByProject => {
-            state.containers.group_by_project = !state.containers.group_by_project;
-            if !state.containers.group_by_project {
-                state.containers.expanded_projects.clear();
+        AppEvent::ToggleColumnPicker => {
+            state.containers.show_column_picker = !state.containers.show_column_picker;
+        }
+        AppEvent::ToggleColumn(name) => {
+            if state.containers.show_column_picker {
+                let col_count = 4;
+                match name.as_str() {
+                    "next" => state.containers.column_picker_selection = (state.containers.column_picker_selection + 1) % col_count,
+                    "prev" => state.containers.column_picker_selection = (state.containers.column_picker_selection + col_count - 1) % col_count,
+                    "name" => state.config.container_columns.show_name = !state.config.container_columns.show_name,
+                    "image" => state.config.container_columns.show_image = !state.config.container_columns.show_image,
+                    "state" => state.config.container_columns.show_state = !state.config.container_columns.show_state,
+                    "ports" => state.config.container_columns.show_ports = !state.config.container_columns.show_ports,
+                    _ => {}
+                }
+                commands.push(Command::SaveConfig);
             }
         }
         AppEvent::BatchToggleContainers(ids) => {

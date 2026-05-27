@@ -2,6 +2,31 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use crate::input::keymap::KeyMap;
 
+fn string_or_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de;
+    struct StringOrVec;
+    impl<'de> de::Visitor<'de> for StringOrVec {
+        type Value = Vec<String>;
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("string or list of strings")
+        }
+        fn visit_str<E: de::Error>(self, value: &str) -> Result<Vec<String>, E> {
+            Ok(vec![value.to_string()])
+        }
+        fn visit_seq<S: de::SeqAccess<'de>>(self, mut seq: S) -> Result<Vec<String>, S::Error> {
+            let mut vec = Vec::new();
+            while let Some(s) = seq.next_element::<String>()? {
+                vec.push(s);
+            }
+            Ok(vec)
+        }
+    }
+    deserializer.deserialize_any(StringOrVec)
+}
+
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct ContainerShellConfig {
     pub shell: Option<String>,
@@ -43,6 +68,7 @@ pub struct ImageColumns {
     pub show_tag: bool,
     pub show_id: bool,
     pub show_size: bool,
+    pub show_ports: bool,
 }
 
 impl Default for ImageColumns {
@@ -52,6 +78,7 @@ impl Default for ImageColumns {
             show_tag: true,
             show_id: true,
             show_size: true,
+            show_ports: false,
         }
     }
 }
@@ -118,67 +145,122 @@ impl PollingIntervals {
     }
 }
 
+fn key_first(keys: &[String]) -> String {
+    keys.first().cloned().unwrap_or_default()
+}
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Keybindings {
-    pub quit: String,
-    pub back: String,
-    pub help: String,
-    pub navigate_down: String,
-    pub navigate_up: String,
-    pub open_details: String,
-    pub open_logs: String,
-    pub open_shell: String,
-    pub start_stop: String,
-    pub restart: String,
-    pub delete: String,
-    pub search: String,
-    pub toggle_selection: String,
-    pub select_all: String,
-    pub navigate_images: String,
-    pub run_image: String,
-    pub remove_image: String,
-    pub remove_dangling_images: String,
-    pub prune_images: String,
-    pub events_export: String,
-    pub jump_top: String,
-    pub jump_bottom: String,
-    pub statistics_sort: String,
-    pub statistics_sort_desc: String,
-    pub logs_export: String,
-    pub toggle_timestamps: String,
-    pub toggle_group_by_project: String,
+    #[serde(default = "default_quit", deserialize_with = "string_or_vec")]
+    pub quit: Vec<String>,
+    #[serde(default = "default_back", deserialize_with = "string_or_vec")]
+    pub back: Vec<String>,
+    #[serde(default = "default_help", deserialize_with = "string_or_vec")]
+    pub help: Vec<String>,
+    #[serde(default = "default_navigate_down", deserialize_with = "string_or_vec")]
+    pub navigate_down: Vec<String>,
+    #[serde(default = "default_navigate_up", deserialize_with = "string_or_vec")]
+    pub navigate_up: Vec<String>,
+    #[serde(default = "default_open_details", deserialize_with = "string_or_vec")]
+    pub open_details: Vec<String>,
+    #[serde(default = "default_open_logs", deserialize_with = "string_or_vec")]
+    pub open_logs: Vec<String>,
+    #[serde(default = "default_open_shell", deserialize_with = "string_or_vec")]
+    pub open_shell: Vec<String>,
+    #[serde(default = "default_start_stop", deserialize_with = "string_or_vec")]
+    pub start_stop: Vec<String>,
+    #[serde(default = "default_restart", deserialize_with = "string_or_vec")]
+    pub restart: Vec<String>,
+    #[serde(default = "default_delete", deserialize_with = "string_or_vec")]
+    pub delete: Vec<String>,
+    #[serde(default = "default_search", deserialize_with = "string_or_vec")]
+    pub search: Vec<String>,
+    #[serde(default = "default_toggle_selection", deserialize_with = "string_or_vec")]
+    pub toggle_selection: Vec<String>,
+    #[serde(default = "default_select_all", deserialize_with = "string_or_vec")]
+    pub select_all: Vec<String>,
+    #[serde(default = "default_navigate_images", deserialize_with = "string_or_vec")]
+    pub navigate_images: Vec<String>,
+    #[serde(default = "default_run_image", deserialize_with = "string_or_vec")]
+    pub run_image: Vec<String>,
+    #[serde(default = "default_remove_image", deserialize_with = "string_or_vec")]
+    pub remove_image: Vec<String>,
+    #[serde(default = "default_remove_dangling_images", deserialize_with = "string_or_vec")]
+    pub remove_dangling_images: Vec<String>,
+    #[serde(default = "default_prune_images", deserialize_with = "string_or_vec")]
+    pub prune_images: Vec<String>,
+    #[serde(default = "default_events_export", deserialize_with = "string_or_vec")]
+    pub events_export: Vec<String>,
+    #[serde(default = "default_jump_top", deserialize_with = "string_or_vec")]
+    pub jump_top: Vec<String>,
+    #[serde(default = "default_jump_bottom", deserialize_with = "string_or_vec")]
+    pub jump_bottom: Vec<String>,
+    #[serde(default = "default_statistics_sort", deserialize_with = "string_or_vec")]
+    pub statistics_sort: Vec<String>,
+    #[serde(default = "default_statistics_sort_desc", deserialize_with = "string_or_vec")]
+    pub statistics_sort_desc: Vec<String>,
+    #[serde(default = "default_logs_export", deserialize_with = "string_or_vec")]
+    pub logs_export: Vec<String>,
+    #[serde(default = "default_toggle_timestamps", deserialize_with = "string_or_vec")]
+    pub toggle_timestamps: Vec<String>,
 }
+
+fn default_quit() -> Vec<String> { vec!["q".to_string()] }
+fn default_back() -> Vec<String> { vec!["Esc".to_string()] }
+fn default_help() -> Vec<String> { vec!["?".to_string()] }
+fn default_navigate_down() -> Vec<String> { vec!["j".to_string(), "Down".to_string()] }
+fn default_navigate_up() -> Vec<String> { vec!["k".to_string(), "Up".to_string()] }
+fn default_open_details() -> Vec<String> { vec!["Enter".to_string()] }
+fn default_open_logs() -> Vec<String> { vec!["l".to_string()] }
+fn default_open_shell() -> Vec<String> { vec!["s".to_string()] }
+fn default_start_stop() -> Vec<String> { vec!["t".to_string()] }
+fn default_restart() -> Vec<String> { vec!["r".to_string()] }
+fn default_delete() -> Vec<String> { vec!["d".to_string()] }
+fn default_search() -> Vec<String> { vec!["/".to_string()] }
+fn default_toggle_selection() -> Vec<String> { vec![" ".to_string()] }
+fn default_select_all() -> Vec<String> { vec!["Ctrl+A".to_string()] }
+fn default_navigate_images() -> Vec<String> { vec!["j".to_string(), "Down".to_string()] }
+fn default_run_image() -> Vec<String> { vec!["r".to_string()] }
+fn default_remove_image() -> Vec<String> { vec!["d".to_string()] }
+fn default_remove_dangling_images() -> Vec<String> { vec!["D".to_string()] }
+fn default_prune_images() -> Vec<String> { vec!["p".to_string()] }
+fn default_events_export() -> Vec<String> { vec!["e".to_string()] }
+fn default_jump_top() -> Vec<String> { vec!["g".to_string()] }
+fn default_jump_bottom() -> Vec<String> { vec!["G".to_string()] }
+fn default_statistics_sort() -> Vec<String> { vec!["s".to_string()] }
+fn default_statistics_sort_desc() -> Vec<String> { vec!["S".to_string()] }
+fn default_logs_export() -> Vec<String> { vec!["Ctrl+S".to_string()] }
+fn default_toggle_timestamps() -> Vec<String> { vec!["T".to_string()] }
 
 impl Default for Keybindings {
     fn default() -> Self {
         Self {
-            quit: "q".to_string(),
-            back: "Esc".to_string(),
-            help: "?".to_string(),
-            navigate_down: "j".to_string(),
-            navigate_up: "k".to_string(),
-            open_details: "Enter".to_string(),
-            open_logs: "l".to_string(),
-            open_shell: "s".to_string(),
-            start_stop: "t".to_string(),
-            restart: "r".to_string(),
-            delete: "d".to_string(),
-            search: "/".to_string(),
-            toggle_selection: " ".to_string(),
-            select_all: "Ctrl+A".to_string(),
-            navigate_images: "j".to_string(),
-            run_image: "r".to_string(),
-            remove_image: "d".to_string(),
-            remove_dangling_images: "D".to_string(),
-            prune_images: "p".to_string(),
-            events_export: "e".to_string(),
-            jump_top: "g".to_string(),
-            jump_bottom: "G".to_string(),
-            statistics_sort: "s".to_string(),
-            statistics_sort_desc: "S".to_string(),
-            logs_export: "Ctrl+S".to_string(),
-            toggle_timestamps: "T".to_string(),
-            toggle_group_by_project: "p".to_string(),
+            quit: default_quit(),
+            back: default_back(),
+            help: default_help(),
+            navigate_down: default_navigate_down(),
+            navigate_up: default_navigate_up(),
+            open_details: default_open_details(),
+            open_logs: default_open_logs(),
+            open_shell: default_open_shell(),
+            start_stop: default_start_stop(),
+            restart: default_restart(),
+            delete: default_delete(),
+            search: default_search(),
+            toggle_selection: default_toggle_selection(),
+            select_all: default_select_all(),
+            navigate_images: default_navigate_images(),
+            run_image: default_run_image(),
+            remove_image: default_remove_image(),
+            remove_dangling_images: default_remove_dangling_images(),
+            prune_images: default_prune_images(),
+            events_export: default_events_export(),
+            jump_top: default_jump_top(),
+            jump_bottom: default_jump_bottom(),
+            statistics_sort: default_statistics_sort(),
+            statistics_sort_desc: default_statistics_sort_desc(),
+            logs_export: default_logs_export(),
+            toggle_timestamps: default_toggle_timestamps(),
         }
     }
 }
@@ -186,20 +268,20 @@ impl Default for Keybindings {
 impl Keybindings {
     pub fn to_help_text(&self) -> Vec<String> {
         vec![
-            format!("    {}     Quit", self.quit),
-            format!("    {}     Toggle help", self.help),
-            format!("    {}     Go back", self.back),
+            format!("    {}     Quit", key_first(&self.quit)),
+            format!("    {}     Toggle help", key_first(&self.help)),
+            format!("    {}     Go back", key_first(&self.back)),
             "".to_string(),
             "  CONTAINERS".to_string(),
-            format!("    {} / {}   Navigate down", self.navigate_down, "↓"),
-            format!("    {} / {}   Navigate up", self.navigate_up, "↑"),
-            format!("    {}     Open details", self.open_details),
-            format!("    {}     Open logs", self.open_logs),
-            format!("    {}     Open shell", self.open_shell),
-            format!("    {}     Start/Stop container", self.start_stop),
-            format!("    {}     Restart container", self.restart),
-            format!("    {}     Delete container", self.delete),
-            format!("    {}     Search", self.search),
+            format!("    {} / {}   Navigate down", key_first(&self.navigate_down), "↓"),
+            format!("    {} / {}   Navigate up", key_first(&self.navigate_up), "↑"),
+            format!("    {}     Open details", key_first(&self.open_details)),
+            format!("    {}     Open logs", key_first(&self.open_logs)),
+            format!("    {}     Open shell", key_first(&self.open_shell)),
+            format!("    {}     Start/Stop container", key_first(&self.start_stop)),
+            format!("    {}     Restart container", key_first(&self.restart)),
+            format!("    {}     Delete container", key_first(&self.delete)),
+            format!("    {}     Search", key_first(&self.search)),
             format!("    {}     Images view", "i"),
             format!("    {}     Events view", "e"),
             format!("    {}     Statistics view", "%"),
@@ -207,45 +289,45 @@ impl Keybindings {
             format!("    {}     Volumes view", "v"),
             "".to_string(),
             "  IMAGES".to_string(),
-            format!("    {} / {}   Navigate down", self.navigate_images, "↓"),
-            format!("    {} / {}   Navigate up", self.navigate_up, "↑"),
-            format!("    {}     Run image", self.run_image),
-            format!("    {}     Remove image", self.remove_image),
-            format!("    {}     Remove dangling images", self.remove_dangling_images),
-            format!("    {}     Prune unused images", self.prune_images),
-            format!("    {}     Search", self.search),
+            format!("    {} / {}   Navigate down", key_first(&self.navigate_images), "↓"),
+            format!("    {} / {}   Navigate up", key_first(&self.navigate_up), "↑"),
+            format!("    {}     Run image", key_first(&self.run_image)),
+            format!("    {}     Remove image", key_first(&self.remove_image)),
+            format!("    {}     Remove dangling images", key_first(&self.remove_dangling_images)),
+            format!("    {}     Prune unused images", key_first(&self.prune_images)),
+            format!("    {}     Search", key_first(&self.search)),
             "".to_string(),
             "  LOGS".to_string(),
-            format!("    {} / {}   Scroll down", self.navigate_down, "↓"),
-            format!("    {} / {}   Scroll up", self.navigate_up, "↑"),
+            format!("    {} / {}   Scroll down", key_first(&self.navigate_down), "↓"),
+            format!("    {} / {}   Scroll up", key_first(&self.navigate_up), "↑"),
             "    PgDn  Page down".to_string(),
             "    PgUp  Page up".to_string(),
-            format!("    {}     Jump to bottom", self.jump_bottom),
-            format!("    {}     Jump to top", self.jump_top),
-            format!("    {}     Search logs", self.search),
+            format!("    {}     Jump to bottom", key_first(&self.jump_bottom)),
+            format!("    {}     Jump to top", key_first(&self.jump_top)),
+            format!("    {}     Search logs", key_first(&self.search)),
             "    Space Pause/unpause".to_string(),
             "".to_string(),
             "  EVENTS".to_string(),
-            format!("    {}     Filter events", self.search),
+            format!("    {}     Filter events", key_first(&self.search)),
             "".to_string(),
             "  STATISTICS".to_string(),
-            format!("    {}     Cycle sort field", self.statistics_sort),
-            format!("    {}     Toggle sort direction", self.statistics_sort_desc),
+            format!("    {}     Cycle sort field", key_first(&self.statistics_sort)),
+            format!("    {}     Toggle sort direction", key_first(&self.statistics_sort_desc)),
             "".to_string(),
             "  NETWORKS / VOLUMES".to_string(),
-            format!("    {} / {}   Navigate down", self.navigate_down, "↓"),
-            format!("    {} / {}   Navigate up", self.navigate_up, "↑"),
-            format!("    {}     Delete selected", self.delete),
+            format!("    {} / {}   Navigate down", key_first(&self.navigate_down), "↓"),
+            format!("    {} / {}   Navigate up", key_first(&self.navigate_up), "↑"),
+            format!("    {}     Delete selected", key_first(&self.delete)),
             "".to_string(),
             "  SCROLLING".to_string(),
-            format!("    {} / {}   Scroll down", self.navigate_down, "↓"),
-            format!("    {} / {}   Scroll up", self.navigate_up, "↑"),
+            format!("    {} / {}   Scroll down", key_first(&self.navigate_down), "↓"),
+            format!("    {} / {}   Scroll up", key_first(&self.navigate_up), "↑"),
             "    PgDn  Page down".to_string(),
             "    PgUp  Page up".to_string(),
-            format!("    {}     Jump to bottom", self.jump_bottom),
-            format!("    {}     Jump to top", self.jump_top),
+            format!("    {}     Jump to bottom", key_first(&self.jump_bottom)),
+            format!("    {}     Jump to top", key_first(&self.jump_top)),
             "".to_string(),
-            format!("  Press {} or {} to close", self.back, self.help),
+            format!("  Press {} or {} to close", key_first(&self.back), key_first(&self.help)),
         ]
     }
 }
@@ -304,10 +386,12 @@ impl OmdockerConfig {
 
     pub fn load() -> Self {
         let path = Self::path();
-        std::fs::read_to_string(&path)
+        let config: Self = std::fs::read_to_string(&path)
             .ok()
             .and_then(|content| toml::from_str(&content).ok())
-            .unwrap_or_default()
+            .unwrap_or_default();
+        let _ = config.save();
+        config
     }
 
     pub fn save(&self) {

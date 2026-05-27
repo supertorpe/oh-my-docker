@@ -9,6 +9,11 @@ use crate::app::state::VolumesState;
 pub fn render(frame: &mut Frame, state: &VolumesState, columns: &crate::config::VolumeColumns) {
     let area = frame.area();
 
+    if state.show_column_picker {
+        render_column_picker(frame, area, columns, state.column_picker_selection);
+        return;
+    }
+
     let (indicator_char, indicator_color) = if state.loading {
         ('⠋', Color::Yellow)
     } else {
@@ -109,6 +114,45 @@ pub fn render(frame: &mut Frame, state: &VolumesState, columns: &crate::config::
     render_footer(frame, inner);
 }
 
+fn render_column_picker(frame: &mut Frame, area: Rect, columns: &crate::config::VolumeColumns, selection: usize) {
+    use ratatui::widgets::Clear;
+    let picker_area = Rect {
+        x: area.width / 2 - 15,
+        y: area.height / 2 - 4,
+        width: 30,
+        height: 8,
+    };
+    let mut lines = vec![
+        Line::from(Span::styled(" COLUMNS (Space to toggle) ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))),
+        Line::from(""),
+    ];
+    for (i, (label, active)) in [
+        ("Name", columns.show_name),
+        ("Driver", columns.show_driver),
+        ("Mountpoint", columns.show_mountpoint),
+    ].iter().enumerate() {
+        let check = if *active { "[x]" } else { "[ ]" };
+        let style = if i == selection {
+            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::White)
+        };
+        lines.push(Line::from(Span::styled(
+            format!("  {} {}", check, label),
+            style,
+        )));
+    }
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(" Esc: close", Style::default().fg(Color::DarkGray))));
+    frame.render_widget(Clear, picker_area);
+    frame.render_widget(
+        Paragraph::new(Text::from(lines))
+            .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(Color::Cyan)))
+            .style(Style::default().fg(Color::White)),
+        picker_area,
+    );
+}
+
 fn render_footer(frame: &mut Frame, area: Rect) {
     let footer = Rect {
         x: area.x,
@@ -117,7 +161,7 @@ fn render_footer(frame: &mut Frame, area: Rect) {
         height: 1,
     };
     frame.render_widget(
-        Paragraph::new(" d  delete  j/k  navigate  Esc  back ")
+        Paragraph::new(" d  delete  j/k  navigate  Esc  back  ^O:columns ")
             .style(Style::default().fg(Color::DarkGray)),
         footer,
     );

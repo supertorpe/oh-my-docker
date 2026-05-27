@@ -244,13 +244,13 @@ pub fn render_run(frame: &mut Frame, run: &ImageRunState) {
         5 => "Host:Container or just Container (e.g., '8080:80' or '443')",
         6 => "Host:Container paths, one per line (e.g., '/data:/app/data')",
         7 => "Empty = auto-generated | or a custom name like 'my-container'",
-        8 => "Press 'a' to toggle | true = container removed after stop",
+        8 => "Press a to toggle | true = container removed after stop",
         9 => "Restart policy: no, always, on-failure, unless-stopped",
         10 => "Memory limit: 512m, 1g, 256m (empty = no limit)",
         11 => "CPU limit: 0.5, 1, 2 (empty = no limit)",
         12 => "Network name: host, bridge, or custom network (empty = default)",
         13 => "Labels: one per line KEY=value (e.g., 'app=myapp')",
-        14 => "Press 'a' to toggle | true = container runs in privileged mode",
+        14 => "Press a to toggle | true = container runs in privileged mode",
         _ => "",
     };
     let val_style = if run.field_focus == 0 && run.command.is_empty() {
@@ -305,7 +305,7 @@ pub fn render_run(frame: &mut Frame, run: &ImageRunState) {
     // Footer
     lines.push(Line::from(""));
     lines.push(Line::from(Span::styled(
-        " ↑↓/Tab:next field  Enter:run  Esc:cancel  Type:edit  Bksp:delete  a:toggle advanced/auto-remove",
+        " ↑↓ Tab:next field  Enter:run  Esc:cancel  Type:edit  Bksp:delete  a:toggle  ^A:advanced",
         Style::default().fg(Color::DarkGray),
     )));
 
@@ -321,8 +321,53 @@ pub fn render_run(frame: &mut Frame, run: &ImageRunState) {
     });
 }
 
+fn render_column_picker(frame: &mut Frame, area: Rect, columns: &crate::config::ImageColumns, selection: usize) {
+    use ratatui::widgets::Clear;
+    let picker_area = Rect {
+        x: area.width / 2 - 15,
+        y: area.height / 2 - 4,
+        width: 30,
+        height: 8,
+    };
+    let mut lines = vec![
+        Line::from(Span::styled(" COLUMNS (Space to toggle) ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))),
+        Line::from(""),
+    ];
+    for (i, (label, active)) in [
+        ("Repository", columns.show_repository),
+        ("Tag", columns.show_tag),
+        ("ID", columns.show_id),
+        ("Size", columns.show_size),
+    ].iter().enumerate() {
+        let check = if *active { "[x]" } else { "[ ]" };
+        let style = if i == selection {
+            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::White)
+        };
+        lines.push(Line::from(Span::styled(
+            format!("  {} {}", check, label),
+            style,
+        )));
+    }
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(" Esc: close", Style::default().fg(Color::DarkGray))));
+    frame.render_widget(Clear, picker_area);
+    frame.render_widget(
+        Paragraph::new(Text::from(lines))
+            .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(Color::Cyan)))
+            .style(Style::default().fg(Color::White)),
+        picker_area,
+    );
+}
+
 pub fn render(frame: &mut Frame, state: &ImagesState, columns: &crate::config::ImageColumns) {
     let area = frame.area();
+
+    if state.show_column_picker {
+        render_column_picker(frame, area, columns, state.column_picker_selection);
+        return;
+    }
 
     let (indicator_char, indicator_color) = if state.loading {
         ('⠋', Color::Yellow)
@@ -341,7 +386,7 @@ pub fn render(frame: &mut Frame, state: &ImagesState, columns: &crate::config::I
     let title = if state.loading {
         format!(" IMAGES {} (loading...) ", indicator_char)
     } else if !state.filter.is_empty() {
-        format!(" IMAGES {} ({}) FILTER '{}' ", indicator_char, state.filtered.len(), state.filter)
+        format!(" IMAGES {} ({}/{}) FILTER '{}' ", indicator_char, state.filtered.len(), state.items.len(), state.filter)
     } else {
         format!(" IMAGES {} ({}) ", indicator_char, state.filtered.len())
     };
@@ -453,7 +498,7 @@ fn render_footer(frame: &mut Frame, area: Rect) {
         height: 1,
     };
     frame.render_widget(
-        Paragraph::new(" r  run container  d  remove  D  dangling  p  prune  /  search  Esc  back ")
+        Paragraph::new(" r  run container  d  remove  D  dangling  p  prune  /  search  Esc  back  ^O:columns ")
             .style(Style::default().fg(Color::DarkGray)),
         footer,
     );

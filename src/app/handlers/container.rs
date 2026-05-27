@@ -4,7 +4,23 @@ use crate::app::mode::Mode;
 use crate::app::state::AppState;
 
 pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
-    if state.containers.filter_active {
+    if state.containers.show_column_picker {
+        match (key.code, key.modifiers) {
+            (KeyCode::Esc, _) => Some(AppEvent::ToggleColumnPicker),
+            (KeyCode::Char(' '), _) | (KeyCode::Enter, _) => {
+                let names = ["name", "image", "state", "ports"];
+                let idx = state.containers.column_picker_selection.min(names.len() - 1);
+                Some(AppEvent::ToggleColumn(names[idx].to_string()))
+            }
+            _ if state.keymap.is_navigate_down(key.code, key.modifiers) || key.code == KeyCode::Down => {
+                Some(AppEvent::ToggleColumn("next".to_string()))
+            }
+            _ if state.keymap.is_navigate_up(key.code, key.modifiers) || key.code == KeyCode::Up => {
+                Some(AppEvent::ToggleColumn("prev".to_string()))
+            }
+            _ => None,
+        }
+    } else if state.containers.filter_active {
         match (key.code, key.modifiers) {
             (KeyCode::Backspace, _) | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
                 let new_q = state.containers.filter.chars().take(state.containers.filter.chars().count().saturating_sub(1)).collect();
@@ -125,9 +141,6 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
                 return None;
             }
         }
-        if km.is_toggle_group_by_project(code, mods) {
-            return Some(AppEvent::ToggleGroupByProject);
-        }
         if code == KeyCode::Char('i') {
             return Some(AppEvent::Navigate(Mode::Images));
         }
@@ -159,9 +172,15 @@ pub fn handle_key_with_clipboard(key: KeyEvent, state: &AppState) -> Option<AppE
         if let Some(c) = state.containers.filtered.get(state.containers.selected)
             .and_then(|&idx| state.containers.items.get(idx))
         {
-            let _ = crate::util::copy_to_clipboard(&c.id);
-            return Some(AppEvent::Info(format!("Container ID copied to clipboard")));
+            if crate::util::copy_to_clipboard(&c.id) {
+                return Some(AppEvent::Info(format!("Container ID copied to clipboard")));
+            } else {
+                return Some(AppEvent::Info(format!("Failed to copy to clipboard - install xclip, wl-copy, or xsel")));
+            }
         }
+    }
+    if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('o') {
+        return Some(AppEvent::ToggleColumnPicker);
     }
     handle_key(key, state)
 }
