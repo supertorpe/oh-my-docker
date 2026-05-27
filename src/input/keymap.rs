@@ -242,17 +242,6 @@ impl KeyMap {
         }
     }
 
-    pub fn matches(&self, key: &crossterm::event::KeyEvent) -> bool {
-        self.matches_code(key.code, key.modifiers)
-    }
-
-    pub fn matches_code(&self, code: KeyCode, modifiers: KeyModifiers) -> bool {
-        if any_match(&self.quit, code, modifiers) { return true; }
-        if any_match(&self.back, code, modifiers) { return true; }
-        if any_match(&self.help, code, modifiers) { return true; }
-        false
-    }
-
     pub fn is_navigate_down(&self, code: KeyCode, modifiers: KeyModifiers) -> bool {
         any_match(&self.navigate_down, code, modifiers)
     }
@@ -323,10 +312,6 @@ impl KeyMap {
 
     pub fn is_jump_bottom(&self, code: KeyCode, modifiers: KeyModifiers) -> bool {
         any_match(&self.jump_bottom, code, modifiers)
-    }
-
-    pub fn is_statistics_sort(&self, code: KeyCode, modifiers: KeyModifiers) -> bool {
-        any_match(&self.statistics_sort, code, modifiers)
     }
 
     pub fn is_statistics_sort_desc(&self, code: KeyCode, modifiers: KeyModifiers) -> bool {
