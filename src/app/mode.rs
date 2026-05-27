@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Mode {
     Containers,
     ContainerDetails(String),
@@ -18,26 +18,6 @@ pub enum Mode {
         prompt: String,
         action: crate::app::event::ConfirmAction,
     },
-}
-
-impl PartialEq for Mode {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Mode::Containers, Mode::Containers) => true,
-            (Mode::ContainerDetails(a), Mode::ContainerDetails(b)) => a == b,
-            (Mode::Logs(a), Mode::Logs(b)) => a == b,
-            (Mode::Images, Mode::Images) => true,
-            (Mode::ImageRun(a), Mode::ImageRun(b)) => a == b,
-            (Mode::Shell(a), Mode::Shell(b)) => a == b,
-            (Mode::ShellConfig(a), Mode::ShellConfig(b)) => a == b,
-            (Mode::Events, Mode::Events) => true,
-            (Mode::Statistics, Mode::Statistics) => true,
-            (Mode::Networks, Mode::Networks) => true,
-            (Mode::Volumes, Mode::Volumes) => true,
-            (Mode::Help, Mode::Help) => true,
-            _ => false,
-        }
-    }
 }
 
 #[derive(Clone, Debug)]

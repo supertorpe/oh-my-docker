@@ -94,7 +94,7 @@ pub enum ImageRunField {
     Privileged,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ConfirmAction {
     DeleteContainer(String),
     BatchDeleteContainers,
