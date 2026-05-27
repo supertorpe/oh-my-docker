@@ -5,6 +5,7 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Paragraph, BorderType};
 
 use crate::app::state::LogState;
+use crate::ui::theme;
 
 fn highlight_text(text: &str, search: &str) -> Line<'static> {
     let search_lower = search.to_lowercase();
@@ -50,7 +51,7 @@ fn highlight_text(text: &str, search: &str) -> Line<'static> {
     Line::from(spans)
 }
 
-pub fn render(frame: &mut Frame, state: &mut LogState) {
+pub fn render(frame: &mut Frame, area: Rect, state: &mut LogState) {
     let search_label = if !state.search.is_empty() {
         format!(" SEARCH '{}'", state.search)
     } else {
@@ -67,16 +68,16 @@ pub fn render(frame: &mut Frame, state: &mut LogState) {
         .title_alignment(Alignment::Center)
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(theme::view_border()));
 
-    let inner = block.inner(frame.area());
+    let inner = block.inner(area);
 
     if state.buffer.is_empty() {
         let text = Text::from(vec![
             Line::from(Span::styled("  Waiting for logs...", Style::default().fg(Color::Yellow))),
             Line::from(""),
         ]);
-        frame.render_widget(Paragraph::new(text).block(block), frame.area());
+        frame.render_widget(Paragraph::new(text).block(block), area);
         render_bottom_bar(frame, inner, state.paused);
         return;
     }
@@ -119,7 +120,7 @@ pub fn render(frame: &mut Frame, state: &mut LogState) {
 
     let text = Text::from(lines);
     let paragraph = Paragraph::new(text).block(block);
-    frame.render_widget(paragraph, frame.area());
+    frame.render_widget(paragraph, area);
 
     render_bottom_bar(frame, inner, state.paused);
 

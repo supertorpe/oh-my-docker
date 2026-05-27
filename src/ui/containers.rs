@@ -9,6 +9,7 @@ use ratatui::widgets::{Block, Borders, Cell, Paragraph, BorderType, Row, Table, 
 
 use crate::app::state::ContainersState;
 use crate::config::ContainerColumns;
+use crate::ui::theme;
 
 fn staleness_indicator(last_updated: Option<std::time::Instant>, interval_ms: u64) -> (char, Color) {
     let threshold_fresh = Duration::from_millis(interval_ms * 2);
@@ -34,8 +35,7 @@ fn project_group_header(group_name: &str, count: usize) -> Row<'static> {
     Row::new(vec![Cell::from(header).style(Style::default().fg(Color::Yellow))])
 }
 
-pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64, columns: &ContainerColumns) {
-    let area = frame.area();
+pub fn render(frame: &mut Frame, area: Rect, state: &ContainersState, tick_count: u64, columns: &ContainerColumns) {
 
     let (indicator_char, indicator_color) = if state.loading {
         ('⠋', Color::Yellow)
@@ -82,8 +82,6 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64, colum
     if state.docker_connected && state.items.is_empty() && !state.loading {
         let text = Text::from(vec![
             Line::from(Span::styled("  No containers found", Style::default().fg(Color::Yellow))),
-            Line::from(""),
-            Line::from(Span::styled("  j/k ↓↑  Enter:details  /:search  l:logs  s:shell  ?:help", Style::default().fg(Color::DarkGray))),
         ]);
         frame.render_widget(Paragraph::new(text).block(block), area);
         return;
@@ -247,10 +245,9 @@ pub fn render(frame: &mut Frame, state: &ContainersState, tick_count: u64, colum
     frame.render_stateful_widget(table, area, &mut table_state);
 
     if state.filter_active {
-        crate::ui::render_filter_bar(frame, inner, &state.filter, "search");
+        crate::ui::render_filter_bar(frame, inner, &state.filter, "filter");
     }
 
-    render_footer(frame, inner, state.selection_mode);
 }
 
 fn render_column_picker(frame: &mut Frame, area: Rect, columns: &ContainerColumns, selection: usize) {
@@ -287,27 +284,9 @@ fn render_column_picker(frame: &mut Frame, area: Rect, columns: &ContainerColumn
     frame.render_widget(Clear, picker_area);
     frame.render_widget(
         Paragraph::new(Text::from(lines))
-            .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(Color::Cyan)))
+            .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(theme::view_border())))
             .style(Style::default().fg(Color::White)),
         picker_area,
-    );
-}
-
-fn render_footer(frame: &mut Frame, area: Rect, selection_mode: bool) {
-    let footer = Rect {
-        x: area.x,
-        y: area.y + area.height.saturating_sub(1),
-        width: area.width,
-        height: 1,
-    };
-    let text = if selection_mode {
-        " Space:toggle/select  Ctrl+a:all  t:stop  d:delete  Esc:exit mode  j/k ↓↑  /search  Enter:details  l:logs  s:shell  ?:help  ^O:columns "
-    } else {
-        " Space:select mode  j/k ↓↑  /search  Enter:details  l:logs  s:shell  r:restart  t:stop/start  d:delete  ?:help  ^O:columns "
-    };
-    frame.render_widget(
-        Paragraph::new(text).style(Style::default().fg(Color::DarkGray)),
-        footer,
     );
 }
 

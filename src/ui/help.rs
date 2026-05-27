@@ -1,20 +1,20 @@
 use ratatui::Frame;
-use ratatui::layout::Alignment;
+use ratatui::layout::{Alignment, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Text};
 use ratatui::widgets::{Block, Borders, Paragraph, BorderType};
 
 use crate::app::state::HelpState;
 use crate::config::OmdockerConfig;
+use crate::ui::theme;
 
-pub fn render(frame: &mut Frame, help: &mut HelpState, config: &OmdockerConfig) {
-    let area = frame.area();
+pub fn render(frame: &mut Frame, area: Rect, help: &mut HelpState, config: &OmdockerConfig) {
     let block = Block::default()
         .title(" HELP ")
         .title_alignment(Alignment::Center)
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(theme::view_border()));
 
     let help_lines: Vec<Line> = config.keybindings.to_help_text().into_iter().map(|s| Line::from(s)).collect();
     let text = Text::from(help_lines);

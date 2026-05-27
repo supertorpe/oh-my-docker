@@ -224,11 +224,11 @@ fn default_run_image() -> Vec<String> { vec!["r".to_string()] }
 fn default_remove_image() -> Vec<String> { vec!["d".to_string()] }
 fn default_remove_dangling_images() -> Vec<String> { vec!["D".to_string()] }
 fn default_prune_images() -> Vec<String> { vec!["p".to_string()] }
-fn default_events_export() -> Vec<String> { vec!["e".to_string()] }
+fn default_events_export() -> Vec<String> { vec!["s".to_string()] }
 fn default_jump_top() -> Vec<String> { vec!["g".to_string()] }
 fn default_jump_bottom() -> Vec<String> { vec!["G".to_string()] }
 fn default_statistics_sort() -> Vec<String> { vec!["s".to_string()] }
-fn default_statistics_sort_desc() -> Vec<String> { vec!["S".to_string()] }
+fn default_statistics_sort_desc() -> Vec<String> { vec!["t".to_string()] }
 fn default_logs_export() -> Vec<String> { vec!["Ctrl+S".to_string()] }
 fn default_toggle_timestamps() -> Vec<String> { vec!["T".to_string()] }
 
@@ -269,8 +269,18 @@ impl Keybindings {
     pub fn to_help_text(&self) -> Vec<String> {
         vec![
             format!("    {}     Quit", key_first(&self.quit)),
-            format!("    {}     Toggle help", key_first(&self.help)),
             format!("    {}     Go back", key_first(&self.back)),
+            "".to_string(),
+            "  GLOBAL NAVIGATION".to_string(),
+            "    c     Containers view".to_string(),
+            "    i     Images view".to_string(),
+            "    n     Networks view".to_string(),
+            "    v     Volumes view".to_string(),
+            "    e     Events view".to_string(),
+            "    %     Statistics view".to_string(),
+            format!("    {}     Help view", key_first(&self.help)),
+            "    Tab   Next tab".to_string(),
+            "    S-Tab Previous tab".to_string(),
             "".to_string(),
             "  CONTAINERS".to_string(),
             format!("    {} / {}   Navigate down", key_first(&self.navigate_down), "↓"),
@@ -281,12 +291,7 @@ impl Keybindings {
             format!("    {}     Start/Stop container", key_first(&self.start_stop)),
             format!("    {}     Restart container", key_first(&self.restart)),
             format!("    {}     Delete container", key_first(&self.delete)),
-            format!("    {}     Search", key_first(&self.search)),
-            format!("    {}     Images view", "i"),
-            format!("    {}     Events view", "e"),
-            format!("    {}     Statistics view", "%"),
-            format!("    {}     Networks view", "n"),
-            format!("    {}     Volumes view", "v"),
+            format!("    {}     Search/filter", key_first(&self.search)),
             "".to_string(),
             "  IMAGES".to_string(),
             format!("    {} / {}   Navigate down", key_first(&self.navigate_images), "↓"),
@@ -295,7 +300,7 @@ impl Keybindings {
             format!("    {}     Remove image", key_first(&self.remove_image)),
             format!("    {}     Remove dangling images", key_first(&self.remove_dangling_images)),
             format!("    {}     Prune unused images", key_first(&self.prune_images)),
-            format!("    {}     Search", key_first(&self.search)),
+            format!("    {}     Search/filter", key_first(&self.search)),
             "".to_string(),
             "  LOGS".to_string(),
             format!("    {} / {}   Scroll down", key_first(&self.navigate_down), "↓"),
@@ -309,9 +314,10 @@ impl Keybindings {
             "".to_string(),
             "  EVENTS".to_string(),
             format!("    {}     Filter events", key_first(&self.search)),
+            format!("    {}     Save/export events", key_first(&self.events_export)),
             "".to_string(),
             "  STATISTICS".to_string(),
-            format!("    {}     Cycle sort field", key_first(&self.statistics_sort)),
+            "    ←/→   Cycle sort field".to_string(),
             format!("    {}     Toggle sort direction", key_first(&self.statistics_sort_desc)),
             "".to_string(),
             "  NETWORKS / VOLUMES".to_string(),

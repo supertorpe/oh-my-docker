@@ -5,17 +5,18 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Paragraph, BorderType};
 
 use crate::app::state::ShellConfigState;
+use crate::ui::theme;
 
-pub fn render(frame: &mut Frame, config: &ShellConfigState) {
+pub fn render(frame: &mut Frame, area: Rect, config: &ShellConfigState) {
     let block = Block::default()
         .title(format!(" SHELL CONFIG — {} ", &config.container_id[..12.min(config.container_id.len())]))
         .title_alignment(Alignment::Center)
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(theme::view_border()));
 
-    let inner = block.inner(frame.area());
-    frame.render_widget(block, frame.area());
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
 
     let mut lines: Vec<Line> = Vec::new();
 

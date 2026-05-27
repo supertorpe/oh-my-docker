@@ -141,21 +141,6 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
                 return None;
             }
         }
-        if code == KeyCode::Char('i') {
-            return Some(AppEvent::Navigate(Mode::Images));
-        }
-        if code == KeyCode::Char('e') {
-            return Some(AppEvent::Navigate(Mode::Events));
-        }
-        if code == KeyCode::Char('%') {
-            return Some(AppEvent::Navigate(Mode::Statistics));
-        }
-        if code == KeyCode::Char('n') {
-            return Some(AppEvent::Navigate(Mode::Networks));
-        }
-        if code == KeyCode::Char('v') {
-            return Some(AppEvent::Navigate(Mode::Volumes));
-        }
         if code == KeyCode::Esc {
             if state.containers.selection_mode {
                 return Some(AppEvent::ToggleSelectionMode);

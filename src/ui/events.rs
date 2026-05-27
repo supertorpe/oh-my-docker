@@ -5,8 +5,9 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Paragraph, BorderType, Wrap};
 
 use crate::app::state::EventsState;
+use crate::ui::theme;
 
-pub fn render(frame: &mut Frame, state: &mut EventsState) {
+pub fn render(frame: &mut Frame, area: Rect, state: &mut EventsState) {
     let search_label = if !state.filter.is_empty() {
         format!(" FILTER '{}'", state.filter)
     } else {
@@ -19,17 +20,16 @@ pub fn render(frame: &mut Frame, state: &mut EventsState) {
         .title_alignment(Alignment::Center)
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(theme::view_border()));
 
-    let inner = block.inner(frame.area());
+    let inner = block.inner(area);
 
     if state.buffer.is_empty() {
         let text = Text::from(vec![
             Line::from(Span::styled("  Waiting for Docker events...", Style::default().fg(Color::Yellow))),
             Line::from(""),
         ]);
-        frame.render_widget(Paragraph::new(text).block(block), frame.area());
-        render_bottom_bar(frame, inner);
+        frame.render_widget(Paragraph::new(text).block(block), area);
         return;
     }
 
@@ -83,33 +83,11 @@ pub fn render(frame: &mut Frame, state: &mut EventsState) {
 
     let text = Text::from(text_lines);
     let paragraph = Paragraph::new(text).block(block).wrap(Wrap { trim: false });
-    frame.render_widget(paragraph, frame.area());
-
-    render_bottom_bar(frame, inner);
+    frame.render_widget(paragraph, area);
 
     if state.filter_active {
         render_search_bar(frame, inner, &state.filter);
     }
-}
-
-fn render_bottom_bar(frame: &mut Frame, area: Rect) {
-    let bar = Rect {
-        x: area.x + 1,
-        y: area.y + area.height.saturating_sub(1),
-        width: area.width.saturating_sub(2),
-        height: 1,
-    };
-    let text = if area.width >= 55 {
-        "  / filter   e:export   ↑↓/k j line   PgUp/PgDn page   g/G top/bottom   Esc back"
-    } else if area.width >= 40 {
-        "  / filter   e:export   PgUp/PgDn page   Esc back"
-    } else {
-        "  / filter   e:export   Esc back"
-    };
-    frame.render_widget(
-        Paragraph::new(text).style(Style::default().fg(Color::DarkGray)),
-        bar,
-    );
 }
 
 fn render_search_bar(frame: &mut Frame, area: Rect, search: &str) {

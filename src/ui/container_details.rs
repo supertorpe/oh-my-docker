@@ -5,15 +5,16 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Paragraph, BorderType};
 
 use crate::app::state::{DetailsState, ContainersState};
+use crate::ui::theme;
 use serde_json::Value;
 
-pub fn render_placeholder(frame: &mut Frame) {
+pub fn render_placeholder(frame: &mut Frame, _area: Rect) {
     let block = Block::default()
         .title(" CONTAINER DETAILS ")
         .title_alignment(Alignment::Center)
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(theme::view_border()));
 
     let text = Text::from(vec![
         Line::from(Span::styled("  No container selected", Style::default().fg(Color::Yellow))),
@@ -24,11 +25,10 @@ pub fn render_placeholder(frame: &mut Frame) {
     let paragraph = Paragraph::new(text)
         .style(Style::default().fg(Color::White))
         .block(block);
-    frame.render_widget(paragraph, frame.area());
+    frame.render_widget(paragraph, _area);
 }
 
-pub fn render(frame: &mut Frame, details: &mut DetailsState, containers: &ContainersState) {
-    let area = frame.area();
+pub fn render(frame: &mut Frame, area: Rect, details: &mut DetailsState, containers: &ContainersState) {
     let footer_height = 1u16;
 
     let block = Block::default()
@@ -36,7 +36,7 @@ pub fn render(frame: &mut Frame, details: &mut DetailsState, containers: &Contai
         .title_alignment(Alignment::Center)
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(theme::view_border()));
 
     let inner = block.inner(area);
     let content_area = Rect {
@@ -68,7 +68,7 @@ pub fn render(frame: &mut Frame, details: &mut DetailsState, containers: &Contai
         Span::styled(" l:logs ", Style::default().fg(Color::Cyan)),
         Span::styled(" s:shell ", Style::default().fg(Color::Cyan)),
         Span::styled(" r:restart ", Style::default().fg(Color::Cyan)),
-        Span::styled(" S:stop/start ", Style::default().fg(Color::Cyan)),
+        Span::styled(" t:start/stop ", Style::default().fg(Color::Cyan)),
         Span::styled(" j/k↓↑/PgUp/PgDn scroll ", Style::default().fg(Color::Cyan)),
         Span::styled(" Esc:back ", Style::default().fg(Color::DarkGray)),
     ];
@@ -96,14 +96,17 @@ fn build_text(details: &DetailsState, containers: &ContainersState) -> Text<'sta
     };
 
     let is_stopping = containers.stopping_containers.contains(&details.id);
+    let is_starting = containers.starting_containers.contains(&details.id);
     let is_deleting = containers.deleting_containers.contains(&details.id);
+
+    let container_state = containers.items.iter().find(|c| c.id == details.id).map(|c| c.state.as_str());
 
     let mut lines: Vec<Line<'static>> = vec![];
 
     push_line_name(&mut lines, &json, "Name", "Name");
     push_line(&mut lines, "Image", extract(&json, &["Config", "Image"]));
     push_line(&mut lines, "Command", extract_cmd(&json));
-    push_status(&mut lines, &json, is_stopping, is_deleting);
+    push_status(&mut lines, &json, container_state, is_starting, is_stopping, is_deleting);
     push_line(&mut lines, "Created", extract(&json, &["Created"]));
 
     lines.push(Line::from(""));
@@ -150,28 +153,35 @@ fn push_line(lines: &mut Vec<Line<'static>>, label: &str, value: String) {
     }
 }
 
-fn push_status(lines: &mut Vec<Line<'static>>, json: &Value, is_stopping: bool, is_deleting: bool) {
-    let status = if is_stopping {
-        "stopping...".to_string()
-    } else if is_deleting {
-        "deleting...".to_string()
+fn push_status(lines: &mut Vec<Line<'static>>, json: &Value, container_state: Option<&str>, is_starting: bool, is_stopping: bool, is_deleting: bool) {
+    let status = if is_deleting {
+        "deleting..."
+    } else if is_stopping {
+        "stopping..."
+    } else if is_starting {
+        "starting..."
+    } else if let Some(state) = container_state {
+        state
     } else {
         let s = extract(json, &["State", "Status"]);
         if s.is_empty() {
-            "unknown".to_string()
-        } else {
-            s
+            return;
         }
+        lines.push(Line::from(vec![
+            Span::raw(" Status:       "),
+            Span::styled(s, Style::default().fg(Color::Yellow)),
+        ]));
+        return;
     };
-    let color = match status.as_str() {
+
+    let color = match status {
         "running" => Color::Green,
         "exited" | "dead" => Color::Red,
-        "stopping..." | "deleting..." => Color::Yellow,
         _ => Color::Yellow,
     };
     lines.push(Line::from(vec![
         Span::raw(" Status:       "),
-        Span::styled(status, Style::default().fg(color)),
+        Span::styled(status.to_string(), Style::default().fg(color)),
     ]));
 }
 

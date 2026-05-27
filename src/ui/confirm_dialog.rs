@@ -6,12 +6,10 @@ use ratatui::widgets::{Block, Borders, BorderType, Clear, Paragraph};
 
 use crate::app::mode::Mode;
 
-pub fn render(frame: &mut Frame, mode: &Mode) {
+pub fn render(frame: &mut Frame, area: Rect, mode: &Mode) {
     let Mode::ConfirmDialog { prompt, .. } = mode else {
         return;
     };
-
-    let area = frame.area();
 
     let lines = vec![
         Line::from(""),

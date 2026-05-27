@@ -1,4 +1,5 @@
 use crate::app::event::{AppEvent, Command, ConfirmAction};
+use crate::app::mode;
 use crate::app::mode::Mode;
 use crate::app::state::AppState;
 
@@ -70,7 +71,22 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             }
             state.navigation.mode_stack.push(mode.clone());
         }
-        AppEvent::Navigate(mode) => state.navigation.mode_stack.push(mode.clone()),
+        AppEvent::Navigate(mode) => {
+            if mode::mode_to_tab(mode).is_some() {
+                if *mode == Mode::Help {
+                    state.previous_tab = state.selected_tab;
+                }
+                let cur_is_base = mode::mode_to_tab(state.navigation.mode_stack.current()).is_some();
+                if cur_is_base {
+                    state.navigation.mode_stack.replace_current(mode.clone());
+                } else {
+                    state.navigation.mode_stack.push(mode.clone());
+                }
+                state.selected_tab = mode::mode_to_tab(mode).unwrap_or(0);
+            } else {
+                state.navigation.mode_stack.push(mode.clone());
+            }
+        }
         AppEvent::Back => {
             if let Some(ref logs) = state.navigation.logs {
                 if let Some(handle) = state.log_streams.remove(&logs.container_id) {
@@ -81,6 +97,10 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             state.navigation.shell_config = None;
             state.navigation.image_run = None;
             state.navigation.mode_stack.back();
+            // Update selected_tab based on the mode we returned to
+            if let Some(tab) = mode::mode_to_tab(state.navigation.mode_stack.current()) {
+                state.selected_tab = tab;
+            }
         }
 
         AppEvent::ShowHelp => state.navigation.mode_stack.push(Mode::Help),

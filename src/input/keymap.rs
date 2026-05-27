@@ -8,12 +8,24 @@ pub struct ParsedKey {
 
 impl ParsedKey {
     pub fn matches(&self, code: KeyCode, modifiers: KeyModifiers) -> bool {
-        self.code == code && self.modifiers == modifiers
+        if self.code == code {
+            return self.modifiers == modifiers
+                || (self.modifiers == KeyModifiers::NONE && modifiers == KeyModifiers::SHIFT)
+                || (self.modifiers == KeyModifiers::SHIFT && modifiers == KeyModifiers::NONE);
+        }
+        false
     }
 }
 
 /// Parse a keybinding string like "j", "Ctrl+A", "Esc", "Enter" into a ParsedKey.
 pub fn parse_keybinding(s: &str) -> ParsedKey {
+    // Space must be checked before trim (trim removes spaces)
+    if s == " " || s.eq_ignore_ascii_case("space") {
+        return ParsedKey {
+            code: KeyCode::Char(' '),
+            modifiers: KeyModifiers::NONE,
+        };
+    }
     let s = s.trim();
     match s.to_lowercase().as_str() {
         "esc" | "escape" => ParsedKey {
@@ -114,7 +126,7 @@ pub fn parse_keybinding(s: &str) -> ParsedKey {
             if chars.len() == 1 {
                 ParsedKey {
                     code: KeyCode::Char(chars[0]),
-                    modifiers: KeyModifiers::NONE,
+                    modifiers: if chars[0].is_uppercase() { KeyModifiers::SHIFT } else { KeyModifiers::NONE },
                 }
             } else {
                 // Default to the first character if it's not a special key
@@ -180,11 +192,11 @@ impl Default for KeyMap {
             remove_image: vec![parse_keybinding("d")],
             remove_dangling_images: vec![parse_keybinding("D")],
             prune_images: vec![parse_keybinding("p")],
-            events_export: vec![parse_keybinding("e")],
+            events_export: vec![parse_keybinding("s")],
             jump_top: vec![parse_keybinding("g")],
             jump_bottom: vec![parse_keybinding("G")],
             statistics_sort: vec![parse_keybinding("s")],
-            statistics_sort_desc: vec![parse_keybinding("S")],
+            statistics_sort_desc: vec![parse_keybinding("t")],
             logs_export: vec![parse_keybinding("Ctrl+S")],
             toggle_timestamps: vec![parse_keybinding("T")],
         }
@@ -324,6 +336,10 @@ impl KeyMap {
 
     pub fn is_logs_export(&self, code: KeyCode, modifiers: KeyModifiers) -> bool {
         any_match(&self.logs_export, code, modifiers)
+    }
+
+    pub fn is_events_export(&self, code: KeyCode, modifiers: KeyModifiers) -> bool {
+        any_match(&self.events_export, code, modifiers)
     }
 
     pub fn is_toggle_timestamps(&self, code: KeyCode, modifiers: KeyModifiers) -> bool {

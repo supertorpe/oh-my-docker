@@ -5,9 +5,9 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Cell, Paragraph, BorderType, Row, Table, TableState};
 
 use crate::app::state::VolumesState;
+use crate::ui::theme;
 
-pub fn render(frame: &mut Frame, state: &VolumesState, columns: &crate::config::VolumeColumns) {
-    let area = frame.area();
+pub fn render(frame: &mut Frame, area: Rect, state: &VolumesState, columns: &crate::config::VolumeColumns) {
 
     if state.show_column_picker {
         render_column_picker(frame, area, columns, state.column_picker_selection);
@@ -40,8 +40,6 @@ pub fn render(frame: &mut Frame, state: &VolumesState, columns: &crate::config::
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(indicator_color));
-
-    let inner = block.inner(area);
 
     if state.items.is_empty() && !state.loading {
         let text = Text::from(vec![
@@ -111,7 +109,6 @@ pub fn render(frame: &mut Frame, state: &VolumesState, columns: &crate::config::
     let mut table_state = TableState::new().with_selected(state.selected);
     frame.render_stateful_widget(table, area, &mut table_state);
 
-    render_footer(frame, inner);
 }
 
 fn render_column_picker(frame: &mut Frame, area: Rect, columns: &crate::config::VolumeColumns, selection: usize) {
@@ -147,22 +144,9 @@ fn render_column_picker(frame: &mut Frame, area: Rect, columns: &crate::config::
     frame.render_widget(Clear, picker_area);
     frame.render_widget(
         Paragraph::new(Text::from(lines))
-            .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(Color::Cyan)))
+            .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(theme::view_border())))
             .style(Style::default().fg(Color::White)),
         picker_area,
     );
 }
 
-fn render_footer(frame: &mut Frame, area: Rect) {
-    let footer = Rect {
-        x: area.x,
-        y: area.y + area.height.saturating_sub(1),
-        width: area.width,
-        height: 1,
-    };
-    frame.render_widget(
-        Paragraph::new(" d  delete  j/k  navigate  Esc  back  ^O:columns ")
-            .style(Style::default().fg(Color::DarkGray)),
-        footer,
-    );
-}

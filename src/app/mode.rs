@@ -73,6 +73,11 @@ impl ModeStack {
         }
     }
 
+    pub fn replace_current(&mut self, mode: Mode) {
+        self.stack.pop_back();
+        self.stack.push_back(mode);
+    }
+
     pub fn len(&self) -> usize {
         self.stack.len()
     }
@@ -83,3 +88,33 @@ impl Default for ModeStack {
         Self::new()
     }
 }
+
+pub fn mode_to_tab(mode: &Mode) -> Option<usize> {
+    match mode {
+        Mode::Containers => Some(0),
+        Mode::Images => Some(1),
+        Mode::Networks => Some(2),
+        Mode::Volumes => Some(3),
+        Mode::Events => Some(4),
+        Mode::Statistics => Some(5),
+        Mode::Help => Some(6),
+        _ => None,
+    }
+}
+
+pub fn tab_to_mode(tab: usize) -> Mode {
+    match tab {
+        0 => Mode::Containers,
+        1 => Mode::Images,
+        2 => Mode::Networks,
+        3 => Mode::Volumes,
+        4 => Mode::Events,
+        5 => Mode::Statistics,
+        6 => Mode::Help,
+        _ => Mode::Containers,
+    }
+}
+
+pub const TAB_TITLES: [&str; 7] = ["Containers", "Images", "Networks", "Volumes", "Events", "Statistics", "Help"];
+
+pub const TAB_COUNT: usize = 7;

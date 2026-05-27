@@ -5,21 +5,22 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Cell, Paragraph, BorderType, Row, Table, TableState};
 
 use crate::app::state::{ImageRunState, ImagesState};
+use crate::ui::theme;
 
 fn field_has_error(run: &ImageRunState, field: usize) -> Option<&str> {
     run.validation_errors.iter().find(|(f, _)| *f == field).map(|(_, msg)| msg.as_str())
 }
 
-pub fn render_run(frame: &mut Frame, run: &ImageRunState) {
+pub fn render_run(frame: &mut Frame, area: Rect, run: &ImageRunState) {
     let block = Block::default()
         .title(format!(" RUN CONTAINER — {} ", &run.image_id[..12.min(run.image_id.len())]))
         .title_alignment(Alignment::Center)
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(Color::Green));
 
-    let inner = block.inner(frame.area());
-    frame.render_widget(block, frame.area());
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
 
     let mut lines: Vec<Line> = Vec::new();
 
@@ -355,15 +356,13 @@ fn render_column_picker(frame: &mut Frame, area: Rect, columns: &crate::config::
     frame.render_widget(Clear, picker_area);
     frame.render_widget(
         Paragraph::new(Text::from(lines))
-            .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(Color::Cyan)))
+            .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(theme::view_border())))
             .style(Style::default().fg(Color::White)),
         picker_area,
     );
 }
 
-pub fn render(frame: &mut Frame, state: &ImagesState, columns: &crate::config::ImageColumns) {
-    let area = frame.area();
-
+pub fn render(frame: &mut Frame, area: Rect, state: &ImagesState, columns: &crate::config::ImageColumns) {
     if state.show_column_picker {
         render_column_picker(frame, area, columns, state.column_picker_selection);
         return;
@@ -404,7 +403,7 @@ pub fn render(frame: &mut Frame, state: &ImagesState, columns: &crate::config::I
         let text = Text::from(vec![
             Line::from(Span::styled("  No images found", Style::default().fg(Color::Yellow))),
             Line::from(""),
-            Line::from(Span::styled("  r  run container  d  remove  /  search  Esc  back", Style::default().fg(Color::DarkGray))),
+            Line::from(Span::styled("  r  run container  d  remove  /  filter  Esc  back", Style::default().fg(Color::DarkGray))),
         ]);
         frame.render_widget(Paragraph::new(text).block(block), area);
         return;
@@ -484,22 +483,7 @@ pub fn render(frame: &mut Frame, state: &ImagesState, columns: &crate::config::I
     frame.render_stateful_widget(table, area, &mut table_state);
 
     if state.filter_active {
-        crate::ui::render_filter_bar(frame, inner, &state.filter, "search");
+        crate::ui::render_filter_bar(frame, inner, &state.filter, "filter");
     }
-
-    render_footer(frame, inner);
 }
 
-fn render_footer(frame: &mut Frame, area: Rect) {
-    let footer = Rect {
-        x: area.x,
-        y: area.y + area.height.saturating_sub(1),
-        width: area.width,
-        height: 1,
-    };
-    frame.render_widget(
-        Paragraph::new(" r  run container  d  remove  D  dangling  p  prune  /  search  Esc  back  ^O:columns ")
-            .style(Style::default().fg(Color::DarkGray)),
-        footer,
-    );
-}

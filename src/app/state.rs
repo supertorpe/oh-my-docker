@@ -5,6 +5,7 @@ use tokio::task::AbortHandle;
 
 use crate::config::OmdockerConfig;
 use crate::app::event::{ContainerSummary, ImageEntry, LogEntry, DockerEvent, StatEntry, NetworkEntry, VolumeEntry};
+use crate::app::mode;
 use crate::app::navigation::NavigationState;
 use crate::input::keymap::KeyMap;
 
@@ -237,6 +238,8 @@ pub struct AppState {
     pub error: Option<String>,
     pub error_timer: u8,
     pub error_persistent: bool,
+    pub selected_tab: usize,
+    pub previous_tab: usize,
     pub tick_count: u64,
     pub log_streams: HashMap<String, AbortHandle>,
     pub quit: bool,
@@ -252,6 +255,8 @@ impl AppState {
             statistics: StatisticsState::default(),
             networks: NetworksState::default(),
             volumes: VolumesState::default(),
+            selected_tab: mode::mode_to_tab(&mode::Mode::Containers).unwrap_or(0),
+            previous_tab: 0,
             config: OmdockerConfig::default(),
             keymap: KeyMap::default(),
             update_available: None,

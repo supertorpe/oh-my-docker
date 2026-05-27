@@ -17,7 +17,7 @@ pub fn handle_details_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     if km.is_restart(code, mods) {
         return state.navigation.details.as_ref().map(|d| AppEvent::RestartContainer(d.id.clone()));
     }
-    if code == KeyCode::Char('S') {
+    if km.is_start_stop(code, mods) {
         return state.navigation.details.as_ref().map(|d| {
             let cid = d.id.clone();
             let container = state.containers.items.iter().find(|c| c.id == d.id);
@@ -71,10 +71,10 @@ pub fn handle_help_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         return Some(AppEvent::ScrollHelp(-1));
     }
     if km.is_jump_top(code, mods) {
-        return Some(AppEvent::ScrollHelp(10000));
+        return Some(AppEvent::ScrollHelp(-10000));
     }
     if km.is_jump_bottom(code, mods) {
-        return Some(AppEvent::ScrollHelp(-10000));
+        return Some(AppEvent::ScrollHelp(10000));
     }
     None
 }

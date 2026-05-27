@@ -21,8 +21,7 @@ fn sort_label(sort_by: &StatSort, ascending: bool) -> String {
     format!(" (sorted by {}{})", field, dir)
 }
 
-pub fn render(frame: &mut Frame, state: &StatisticsState) {
-    let area = frame.area();
+pub fn render(frame: &mut Frame, area: Rect, state: &StatisticsState) {
 
     let (indicator_char, indicator_color) = if state.loading {
         ('⠋', Color::Yellow)
@@ -58,8 +57,6 @@ pub fn render(frame: &mut Frame, state: &StatisticsState) {
     if state.items.is_empty() && !state.loading {
         let text = Text::from(vec![
             Line::from(Span::styled("  No running containers", Style::default().fg(Color::Yellow))),
-            Line::from(""),
-            Line::from(Span::styled("  ←/→:sort  t:direction  Esc  back", Style::default().fg(Color::DarkGray))),
         ]);
         frame.render_widget(Paragraph::new(text).block(block), area);
         return;
@@ -163,7 +160,7 @@ pub fn render(frame: &mut Frame, state: &StatisticsState) {
         height: 1,
     };
     frame.render_widget(
-        Paragraph::new(" ←/→:sort  t:direction  Esc  back").style(Style::default().fg(Color::DarkGray)),
+        Paragraph::new(" left/right:navigate  t:toggle ").style(Style::default().fg(Color::DarkGray)),
         footer,
     );
 }

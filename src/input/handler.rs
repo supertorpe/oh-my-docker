@@ -1,5 +1,6 @@
-use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crate::app::event::AppEvent;
+use crate::app::mode;
 use crate::app::mode::Mode;
 use crate::app::state::AppState;
 
@@ -43,25 +44,70 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     let code = key.code;
     let mods = key.modifiers;
 
-    // Check global actions using keymap
     if km.is_quit(code, mods) && !in_input_mode {
         return Some(AppEvent::Quit);
     }
+
     if km.is_back(code, mods) && !in_input_mode {
         if state.containers.selection_mode {
-            // Do nothing in selection mode for back
+            // Let Esc pass through to the container handler which exits selection mode
+        } else if *state.navigation.mode_stack.current() == Mode::Help && state.navigation.mode_stack.len() > 1 {
+            return Some(AppEvent::Back);
         } else if *state.navigation.mode_stack.current() == Mode::Help {
-            return Some(AppEvent::HideHelp);
+            // Help tab (not pushed) — return to previous tab
+            return Some(AppEvent::Navigate(mode::tab_to_mode(state.previous_tab)));
         } else if state.navigation.mode_stack.len() > 1 {
             return Some(AppEvent::Back);
+        } else {
+            return None;
         }
-        return None;
-    }
-    if km.is_help(code, mods) && !in_input_mode {
-        return Some(AppEvent::ShowHelp);
     }
 
-   match state.navigation.mode_stack.current() {
+    // ? switches to Help tab (base modes) or shows help overlay (sub-views)
+    if km.is_help(code, mods) && !in_input_mode {
+        if *state.navigation.mode_stack.current() == Mode::Help {
+            return None;
+        }
+        if mode::mode_to_tab(state.navigation.mode_stack.current()).is_some() {
+            return Some(AppEvent::Navigate(Mode::Help));
+        } else {
+            return Some(AppEvent::ShowHelp);
+        }
+    }
+
+    // Tab/BackTab navigation for base modes
+    if !in_input_mode {
+        let current_tab = key.code == KeyCode::Tab || key.code == KeyCode::BackTab;
+        if current_tab && mode::mode_to_tab(state.navigation.mode_stack.current()).is_some() {
+            let next = match (code, mods) {
+                (KeyCode::Tab, KeyModifiers::NONE) => (state.selected_tab + 1) % mode::TAB_COUNT,
+                (KeyCode::BackTab, _) | (KeyCode::Tab, KeyModifiers::SHIFT) => {
+                    (state.selected_tab + mode::TAB_COUNT - 1) % mode::TAB_COUNT
+                }
+                _ => return None,
+            };
+            return Some(AppEvent::Navigate(mode::tab_to_mode(next)));
+        }
+    }
+
+    // Global view navigation shortcuts — only for base tab modes
+    if !in_input_mode && mode::mode_to_tab(state.navigation.mode_stack.current()).is_some() {
+        let current = state.navigation.mode_stack.current();
+        let target = match code {
+            KeyCode::Char('c') if *current != Mode::Containers => Some(Mode::Containers),
+            KeyCode::Char('i') if *current != Mode::Images => Some(Mode::Images),
+            KeyCode::Char('n') if *current != Mode::Networks => Some(Mode::Networks),
+            KeyCode::Char('v') if *current != Mode::Volumes => Some(Mode::Volumes),
+            KeyCode::Char('e') if *current != Mode::Events => Some(Mode::Events),
+            KeyCode::Char('%') if *current != Mode::Statistics => Some(Mode::Statistics),
+            _ => None,
+        };
+        if let Some(mode) = target {
+            return Some(AppEvent::Navigate(mode));
+        }
+    }
+
+    match state.navigation.mode_stack.current() {
         Mode::Containers => crate::app::handlers::container::handle_key_with_clipboard(key, state),
         Mode::ContainerDetails(_) => crate::app::handlers::navigation::handle_details_key(key, state),
         Mode::Logs(_) => crate::app::handlers::log::handle_key(key, state),
