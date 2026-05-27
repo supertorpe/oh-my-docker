@@ -109,11 +109,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust toolchain
+        run: |
+          rustup update stable
+          rustup target add ${{ matrix.target }}
 
-      - name: Install compilation target
-        run: rustup target add ${{ matrix.target }}
+      - name: Install cross
+        if: matrix.cross
+        run: cargo install cross
 
       - name: Install cross
         if: matrix.cross
