@@ -166,7 +166,7 @@ jobs:
           echo "ASSET=$ARCHIVE_NAME" >> $GITHUB_ENV
 
       - name: Upload release archive
-        uses: actions/upload-artifact@de29d10ed0a636b27c763af1f8b57f660de83b48 # v9
+        uses: actions/upload-artifact@v4
         with:
           name: build-${{ matrix.target }}
           path: dist/${{ env.ASSET }}
@@ -177,16 +177,16 @@ jobs:
     runs-on: macos-14
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@v4
 
       - name: Download macOS build artifacts
-        uses: actions/download-artifact@de29d10ed0a636b27c763af1f8b57f660de83b48 # v9
+        uses: actions/download-artifact@v4
         with:
           pattern: build-x86_64-apple-darwin
           path: artifacts/amd64
 
       - name: Download aarch64 build artifact
-        uses: actions/download-artifact@de29d10ed0a636b27c763af1f8b57f660de83b48 # v9
+        uses: actions/download-artifact@v4
         with:
           pattern: build-aarch64-apple-darwin
           path: artifacts/arm64
@@ -221,7 +221,7 @@ jobs:
           cd ..
 
       - name: Upload universal macOS artifact
-        uses: actions/upload-artifact@de29d10ed0a636b27c763af1f8b57f660de83b48 # v9
+        uses: actions/upload-artifact@v4
         with:
           name: build-universal-apple-darwin
           path: dist/${PKG_NAME}_${{ inputs.version }}_universal-apple-darwin.tar.gz

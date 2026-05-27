@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all build artifacts
-        uses: actions/download-artifact@de29d10ed0a636b27c763af1f8b57f660de83b48 # v9
+        uses: actions/download-artifact@v4
         with:
           pattern: build-*
           path: artifacts
@@ -48,7 +48,7 @@ jobs:
           cd artifacts
           find . -maxdepth 1 -type f -name "omdocker_*" -exec sha256sum {} \; | tee SHA256SUMS.txt
 
-      - uses: actions/upload-artifact@de29d10ed0a636b27c763af1f8b57f660de83b48 # v9
+      - uses: actions/upload-artifact@v4
         with:
           name: SHA256SUMS
           path: artifacts/SHA256SUMS.txt
@@ -59,17 +59,17 @@ jobs:
     needs: [build, checksums]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@v4
 
       - name: Download all build artifacts
-        uses: actions/download-artifact@de29d10ed0a636b27c763af1f8b57f660de83b48 # v9
+        uses: actions/download-artifact@v4
         with:
           pattern: build-*
           path: artifacts
           merge-multiple: true
 
       - name: Download checksums
-        uses: actions/download-artifact@de29d10ed0a636b27c763af1f8b57f660de83b48 # v9
+        uses: actions/download-artifact@v4
         with:
           name: SHA256SUMS
           path: artifacts
