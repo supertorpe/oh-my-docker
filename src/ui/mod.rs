@@ -8,7 +8,9 @@ use crate::app::mode;
 use crate::app::mode::Mode;
 use crate::app::state::AppState;
 
-pub fn staleness_indicator(last_updated: Option<std::time::Instant>, fresh: Duration, stale: Duration) -> (char, Color) {
+pub fn staleness_indicator(last_updated: Option<std::time::Instant>, interval_ms: u64) -> (char, Color) {
+    let fresh = Duration::from_millis(interval_ms * 2);
+    let stale = Duration::from_millis(interval_ms * 5);
     match last_updated {
         Some(instant) => {
             let elapsed = instant.elapsed();
@@ -71,7 +73,7 @@ pub fn render(frame: &mut Frame, state: &mut AppState) {
 
 fn render_content(frame: &mut Frame, state: &mut AppState, area: Rect) {
     match state.navigation.mode_stack.current() {
-        Mode::Containers => containers::render(frame, area, &state.containers, state.tick_count, &state.config.container_columns),
+        Mode::Containers => containers::render(frame, area, &state.containers, state.tick_count, &state.config.container_columns, state.config.polling.containers_ms),
         Mode::ContainerDetails(_) => {
             if let Some(ref mut details) = state.navigation.details {
                 container_details::render(frame, area, details, &state.containers);
@@ -86,7 +88,7 @@ fn render_content(frame: &mut Frame, state: &mut AppState, area: Rect) {
                 logs_render_placeholder(frame, area);
             }
         }
-        Mode::Images => images::render(frame, area, &state.images, &state.config.image_columns),
+        Mode::Images => images::render(frame, area, &state.images, &state.config.image_columns, state.config.polling.images_ms),
         Mode::ImageRun(_) => {
             if let Some(ref run) = state.navigation.image_run {
                 images::render_run(frame, area, run);
@@ -106,8 +108,8 @@ fn render_content(frame: &mut Frame, state: &mut AppState, area: Rect) {
         }
         Mode::Events => events::render(frame, area, &mut state.events),
         Mode::Statistics => statistics::render(frame, area, &state.statistics),
-        Mode::Networks => networks::render(frame, area, &state.networks, &state.config.network_columns),
-        Mode::Volumes => volumes::render(frame, area, &state.volumes, &state.config.volume_columns),
+        Mode::Networks => networks::render(frame, area, &state.networks, &state.config.network_columns, state.config.polling.networks_ms),
+        Mode::Volumes => volumes::render(frame, area, &state.volumes, &state.config.volume_columns, state.config.polling.volumes_ms),
         Mode::Help => help::render(frame, area, &mut state.navigation.help, &state.config),
         Mode::ConfirmDialog { .. } => confirm_dialog::render(frame, area, state.navigation.mode_stack.current()),
     }

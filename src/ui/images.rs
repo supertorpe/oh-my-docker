@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Rect};
 use ratatui::style::{Color, Modifier, Style};
@@ -332,7 +330,8 @@ fn render_column_picker(frame: &mut Frame, area: Rect, columns: &crate::config::
     ], selection);
 }
 
-pub fn render(frame: &mut Frame, area: Rect, state: &ImagesState, columns: &crate::config::ImageColumns) {
+pub fn render(frame: &mut Frame, area: Rect, state: &ImagesState, columns: &crate::config::ImageColumns, polling_intervals_ms: u64) {
+
     if state.show_column_picker {
         render_column_picker(frame, area, columns, state.column_picker_selection);
         return;
@@ -341,7 +340,7 @@ pub fn render(frame: &mut Frame, area: Rect, state: &ImagesState, columns: &crat
     let (indicator_char, indicator_color) = if state.loading {
         ('⠋', Color::Yellow)
     } else {
-        crate::ui::staleness_indicator(state.last_updated, Duration::from_secs(20), Duration::from_secs(50))
+        crate::ui::staleness_indicator(state.last_updated, polling_intervals_ms)
     };
 
     let title = if state.loading {

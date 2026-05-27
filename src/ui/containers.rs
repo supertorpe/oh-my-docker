@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::time::Duration;
 
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Rect};
@@ -16,14 +15,14 @@ fn project_group_header(group_name: &str, count: usize) -> Row<'static> {
     Row::new(vec![Cell::from(header).style(Style::default().fg(Color::Yellow))])
 }
 
-pub fn render(frame: &mut Frame, area: Rect, state: &ContainersState, tick_count: u64, columns: &ContainerColumns) {
+pub fn render(frame: &mut Frame, area: Rect, state: &ContainersState, tick_count: u64, columns: &ContainerColumns, polling_intervals_ms: u64) {
 
     let (indicator_char, indicator_color) = if state.loading {
         ('⠋', Color::Yellow)
     } else if !state.docker_connected {
         ('?', Color::Red)
     } else {
-        crate::ui::staleness_indicator(state.last_updated, Duration::from_millis(4000), Duration::from_millis(10000))
+        crate::ui::staleness_indicator(state.last_updated, polling_intervals_ms)
     };
 
     let title = if state.loading {
