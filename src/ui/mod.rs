@@ -6,6 +6,7 @@ use crate::app::mode;
 use crate::app::mode::Mode;
 use crate::app::state::AppState;
 
+pub mod column_picker;
 pub mod containers;
 pub mod container_details;
 pub mod logs;

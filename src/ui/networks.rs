@@ -5,7 +5,6 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Cell, Paragraph, BorderType, Row, Table, TableState};
 
 use crate::app::state::NetworksState;
-use crate::ui::theme;
 
 pub fn render(frame: &mut Frame, area: Rect, state: &NetworksState, columns: &crate::config::NetworkColumns) {
 
@@ -132,43 +131,12 @@ pub fn render(frame: &mut Frame, area: Rect, state: &NetworksState, columns: &cr
 }
 
 fn render_column_picker(frame: &mut Frame, area: Rect, columns: &crate::config::NetworkColumns, selection: usize) {
-    use ratatui::widgets::Clear;
-    let picker_area = Rect {
-        x: area.width / 2 - 15,
-        y: area.height / 2 - 4,
-        width: 30,
-        height: 8,
-    };
-    let mut lines = vec![
-        Line::from(Span::styled(" COLUMNS (Space to toggle) ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))),
-        Line::from(""),
-    ];
-    for (i, (label, active)) in [
+    crate::ui::column_picker::render_column_picker(frame, area, &[
         ("Name", columns.show_name),
         ("ID", columns.show_id),
         ("Driver", columns.show_driver),
         ("Scope", columns.show_scope),
         ("IPAM", columns.show_ipam),
-    ].iter().enumerate() {
-        let check = if *active { "[x]" } else { "[ ]" };
-        let style = if i == selection {
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(Color::White)
-        };
-        lines.push(Line::from(Span::styled(
-            format!("  {} {}", check, label),
-            style,
-        )));
-    }
-    lines.push(Line::from(""));
-    lines.push(Line::from(Span::styled(" Esc: close", Style::default().fg(Color::DarkGray))));
-    frame.render_widget(Clear, picker_area);
-    frame.render_widget(
-        Paragraph::new(Text::from(lines))
-            .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(theme::view_border())))
-            .style(Style::default().fg(Color::White)),
-        picker_area,
-    );
+    ], selection);
 }
 

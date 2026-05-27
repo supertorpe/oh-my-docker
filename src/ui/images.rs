@@ -5,7 +5,6 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Cell, Paragraph, BorderType, Row, Table, TableState};
 
 use crate::app::state::{ImageRunState, ImagesState};
-use crate::ui::theme;
 
 fn field_has_error(run: &ImageRunState, field: usize) -> Option<&str> {
     run.validation_errors.iter().find(|(f, _)| *f == field).map(|(_, msg)| msg.as_str())
@@ -323,43 +322,12 @@ pub fn render_run(frame: &mut Frame, area: Rect, run: &ImageRunState) {
 }
 
 fn render_column_picker(frame: &mut Frame, area: Rect, columns: &crate::config::ImageColumns, selection: usize) {
-    use ratatui::widgets::Clear;
-    let picker_area = Rect {
-        x: area.width / 2 - 15,
-        y: area.height / 2 - 4,
-        width: 30,
-        height: 8,
-    };
-    let mut lines = vec![
-        Line::from(Span::styled(" COLUMNS (Space to toggle) ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))),
-        Line::from(""),
-    ];
-    for (i, (label, active)) in [
+    crate::ui::column_picker::render_column_picker(frame, area, &[
         ("Repository", columns.show_repository),
         ("Tag", columns.show_tag),
         ("ID", columns.show_id),
         ("Size", columns.show_size),
-    ].iter().enumerate() {
-        let check = if *active { "[x]" } else { "[ ]" };
-        let style = if i == selection {
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(Color::White)
-        };
-        lines.push(Line::from(Span::styled(
-            format!("  {} {}", check, label),
-            style,
-        )));
-    }
-    lines.push(Line::from(""));
-    lines.push(Line::from(Span::styled(" Esc: close", Style::default().fg(Color::DarkGray))));
-    frame.render_widget(Clear, picker_area);
-    frame.render_widget(
-        Paragraph::new(Text::from(lines))
-            .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded).border_style(Style::default().fg(theme::view_border())))
-            .style(Style::default().fg(Color::White)),
-        picker_area,
-    );
+    ], selection);
 }
 
 pub fn render(frame: &mut Frame, area: Rect, state: &ImagesState, columns: &crate::config::ImageColumns) {
