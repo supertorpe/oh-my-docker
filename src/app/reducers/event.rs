@@ -37,7 +37,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                     .duration_since(std::time::UNIX_EPOCH)
                     .map(|d| d.as_secs())
                     .unwrap_or(0);
-                let filename = format!("/tmp/omdocker_events_{}.log", ts);
+                let filename = format!("{}/omdocker_events_{}.log", std::env::temp_dir().display(), ts);
                 let fname = filename.clone();
                 let lines = buffer.clone();
                 commands.push(Command::ExportLogs(fname, lines));

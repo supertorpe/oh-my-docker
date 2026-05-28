@@ -51,7 +51,7 @@ fn try_clipboard_pipe(tool: &str, args: &[&str], text: &str) -> bool {
 }
 
 fn try_clipboard_file(tool: &str, args: &[&str], text: &str) -> bool {
-    let tmp = format!("/tmp/_omdc_{}", std::process::id());
+    let tmp = format!("{}/_omdc_{}", std::env::temp_dir().display(), std::process::id());
     if std::fs::write(&tmp, text).is_err() { return false; }
     let result = std::process::Command::new(tool)
         .args(args)
@@ -69,7 +69,7 @@ pub fn copy_to_clipboard(text: &str) -> bool {
     if try_clipboard_pipe("xsel", &["--clipboard", "--input"], text) { return true; }
     if try_clipboard_pipe("wl-copy", &[], text) { return true; }
     if try_clipboard_pipe("pbcopy", &[], text) { return true; }
-    let path = format!("/tmp/omdocker_clipboard_{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0));
+    let path = format!("{}/omdocker_clipboard_{}", std::env::temp_dir().display(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0));
     let _ = std::fs::write(&path, text);
     false
 }
