@@ -167,14 +167,12 @@ async fn main() -> Result<()> {
             terminal = init_terminal()?;
             match status {
                 Ok(s) if s.success() => {
-                    let (s, c) = app::reducer::reduce(state, app::event::AppEvent::CloseShell);
-                    state = s;
+                    let c = app::reducer::reduce(&mut state, app::event::AppEvent::CloseShell);
                     handle_commands(c, &docker, &event_tx);
                 }
                 _ => {
                     let msg = format!("Shell exec failed (container may not have '{}')", shell.shell);
-                    let (s, _c) = app::reducer::reduce(state, app::event::AppEvent::Info(msg));
-                    state = s;
+                    let _c = app::reducer::reduce(&mut state, app::event::AppEvent::Info(msg));
                 }
             }
         }
@@ -194,9 +192,8 @@ async fn main() -> Result<()> {
 }
 
 fn process_event(mut state: app::state::AppState, event: app::event::AppEvent, docker: &Option<Docker>, tx: &mpsc::UnboundedSender<app::event::AppEvent>) -> app::state::AppState {
-    let (new_state, commands) = app::reducer::reduce(state, event);
+    let commands = app::reducer::reduce(&mut state, event);
     let needs_save = commands.iter().any(|c| matches!(c, Command::SaveConfig));
-    state = new_state;
     let cmds: Vec<Command> = commands.into_iter().filter(|c| !matches!(c, Command::SaveConfig)).collect();
     if let Some(handle) = handle_commands(cmds, docker, tx) {
         if let Some(ref logs) = state.navigation.logs {
