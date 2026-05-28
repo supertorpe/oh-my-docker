@@ -28,6 +28,7 @@ pub struct ContainersState {
     pub last_updated: Option<Instant>,
     pub show_column_picker: bool,
     pub column_picker_selection: usize,
+    pub scroll_offset: usize,
 }
 
 impl Default for ContainersState {
@@ -49,6 +50,7 @@ impl Default for ContainersState {
             last_updated: None,
             show_column_picker: false,
             column_picker_selection: 0,
+            scroll_offset: 0,
         }
     }
 }
@@ -75,7 +77,7 @@ pub struct LogState {
     pub viewport_height: usize,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct ImagesState {
     pub items: Vec<ImageEntry>,
     pub filtered: Vec<usize>,
@@ -86,6 +88,24 @@ pub struct ImagesState {
     pub last_updated: Option<Instant>,
     pub show_column_picker: bool,
     pub column_picker_selection: usize,
+    pub scroll_offset: usize,
+}
+
+impl Default for ImagesState {
+    fn default() -> Self {
+        Self {
+            items: Vec::new(),
+            filtered: Vec::new(),
+            selected: 0,
+            filter: String::new(),
+            filter_active: false,
+            loading: true,
+            last_updated: None,
+            show_column_picker: false,
+            column_picker_selection: 0,
+            scroll_offset: 0,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -181,6 +201,7 @@ pub struct NetworksState {
     pub last_updated: Option<Instant>,
     pub show_column_picker: bool,
     pub column_picker_selection: usize,
+    pub scroll_offset: usize,
 }
 
 impl Default for NetworksState {
@@ -192,6 +213,7 @@ impl Default for NetworksState {
             last_updated: None,
             show_column_picker: false,
             column_picker_selection: 0,
+            scroll_offset: 0,
         }
     }
 }
@@ -204,6 +226,7 @@ pub struct VolumesState {
     pub last_updated: Option<Instant>,
     pub show_column_picker: bool,
     pub column_picker_selection: usize,
+    pub scroll_offset: usize,
 }
 
 impl Default for VolumesState {
@@ -215,6 +238,7 @@ impl Default for VolumesState {
             last_updated: None,
             show_column_picker: false,
             column_picker_selection: 0,
+            scroll_offset: 0,
         }
     }
 }

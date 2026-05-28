@@ -330,7 +330,7 @@ fn render_column_picker(frame: &mut Frame, area: Rect, columns: &crate::config::
     ], selection);
 }
 
-pub fn render(frame: &mut Frame, area: Rect, state: &ImagesState, columns: &crate::config::ImageColumns, polling_intervals_ms: u64) {
+pub fn render(frame: &mut Frame, area: Rect, state: &mut ImagesState, columns: &crate::config::ImageColumns, polling_intervals_ms: u64) {
 
     if state.show_column_picker {
         render_column_picker(frame, area, columns, state.column_picker_selection);
@@ -440,8 +440,11 @@ pub fn render(frame: &mut Frame, area: Rect, state: &ImagesState, columns: &crat
         .header(header_row)
         .block(block);
 
-    let mut table_state = TableState::new().with_selected(state.selected);
+    let mut table_state = TableState::new()
+        .with_selected(Some(state.selected))
+        .with_offset(state.scroll_offset);
     frame.render_stateful_widget(table, area, &mut table_state);
+    state.scroll_offset = table_state.offset();
 
     if state.filter_active {
         crate::ui::render_filter_bar(frame, inner, &state.filter, "filter");

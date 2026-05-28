@@ -7,10 +7,10 @@ use crate::ui::theme;
 fn shortcuts(selected_tab: usize) -> &'static str {
     match selected_tab {
         0 => " Enter:details  l:logs  s:shell  /:filter  t:start/stop  r:restart  d:delete  Space:select ",
-        1 => " Enter:info  /:filter  r:run  d:delete  D:dangling  p:prune ",
+        1 => " /:filter  r:run  d:delete  D:dangling  p:prune ",
         2 => " d:delete ",
         3 => " d:delete ",
-        4 => " /:filter  s:save ",
+        4 => " /:filter ",
         5 => " left/right:navigate  t:direction ",
         6 => " Esc:back  arrows:scroll  j/k:scroll  PgUp/PgDn:page  g/G:top/bottom ",
         _ => "",

@@ -160,10 +160,8 @@ pub struct KeyMap {
     pub remove_image: Vec<ParsedKey>,
     pub remove_dangling_images: Vec<ParsedKey>,
     pub prune_images: Vec<ParsedKey>,
-    pub events_export: Vec<ParsedKey>,
     pub jump_top: Vec<ParsedKey>,
     pub jump_bottom: Vec<ParsedKey>,
-    pub statistics_sort: Vec<ParsedKey>,
     pub statistics_sort_desc: Vec<ParsedKey>,
     pub logs_export: Vec<ParsedKey>,
     pub toggle_timestamps: Vec<ParsedKey>,
@@ -191,10 +189,8 @@ impl Default for KeyMap {
             remove_image: vec![parse_keybinding("d")],
             remove_dangling_images: vec![parse_keybinding("D")],
             prune_images: vec![parse_keybinding("p")],
-            events_export: vec![parse_keybinding("s")],
             jump_top: vec![parse_keybinding("g")],
             jump_bottom: vec![parse_keybinding("G")],
-            statistics_sort: vec![parse_keybinding("s")],
             statistics_sort_desc: vec![parse_keybinding("t")],
             logs_export: vec![parse_keybinding("Ctrl+S")],
             toggle_timestamps: vec![parse_keybinding("T")],
@@ -206,7 +202,6 @@ fn any_match(keys: &[ParsedKey], code: KeyCode, modifiers: KeyModifiers) -> bool
     keys.iter().any(|k| k.matches(code, modifiers))
 }
 
-#[allow(dead_code)]
 impl KeyMap {
     pub fn from_keybindings(keybindings: &crate::config::Keybindings) -> Self {
         fn parse_all(keys: &[String]) -> Vec<ParsedKey> {
@@ -232,10 +227,8 @@ impl KeyMap {
             remove_image: parse_all(&keybindings.remove_image),
             remove_dangling_images: parse_all(&keybindings.remove_dangling_images),
             prune_images: parse_all(&keybindings.prune_images),
-            events_export: parse_all(&keybindings.events_export),
             jump_top: parse_all(&keybindings.jump_top),
             jump_bottom: parse_all(&keybindings.jump_bottom),
-            statistics_sort: parse_all(&keybindings.statistics_sort),
             statistics_sort_desc: parse_all(&keybindings.statistics_sort_desc),
             logs_export: parse_all(&keybindings.logs_export),
             toggle_timestamps: parse_all(&keybindings.toggle_timestamps),
@@ -320,10 +313,6 @@ impl KeyMap {
 
     pub fn is_logs_export(&self, code: KeyCode, modifiers: KeyModifiers) -> bool {
         any_match(&self.logs_export, code, modifiers)
-    }
-
-    pub fn is_events_export(&self, code: KeyCode, modifiers: KeyModifiers) -> bool {
-        any_match(&self.events_export, code, modifiers)
     }
 
     pub fn is_toggle_timestamps(&self, code: KeyCode, modifiers: KeyModifiers) -> bool {

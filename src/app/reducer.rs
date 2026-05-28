@@ -132,7 +132,6 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                 | AppEvent::ActivateEventsFilter
                 | AppEvent::EventsFilterSubmit
                 | AppEvent::FilterEvents(_)
-                | AppEvent::ExportEvents
                 | AppEvent::ScrollEvents(_) => {
                     commands.extend(crate::app::reducers::event::reduce(state, &event));
                 }

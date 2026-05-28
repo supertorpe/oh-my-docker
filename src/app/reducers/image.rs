@@ -111,13 +111,13 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
         }
         AppEvent::ImageRunFocusNext => {
             if let Some(ref mut run) = state.navigation.image_run {
-                let max_fields = if run.show_advanced { 14 } else { 9 };
+                let max_fields = if run.show_advanced { 15 } else { 9 };
                 run.field_focus = (run.field_focus + 1) % max_fields;
             }
         }
         AppEvent::ImageRunFocusPrev => {
             if let Some(ref mut run) = state.navigation.image_run {
-                let max_fields = if run.show_advanced { 14 } else { 9 };
+                let max_fields = if run.show_advanced { 15 } else { 9 };
                 run.field_focus = if run.field_focus == 0 {
                     max_fields - 1
                 } else {

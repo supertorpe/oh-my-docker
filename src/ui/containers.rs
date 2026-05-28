@@ -10,12 +10,17 @@ use crate::app::state::ContainersState;
 use crate::config::ContainerColumns;
 
 
-fn project_group_header(group_name: &str, count: usize) -> Row<'static> {
+fn project_group_header(group_name: &str, count: usize, selection_mode: bool) -> Row<'static> {
     let header = format!(" {} ({}) ", group_name, count);
-    Row::new(vec![Cell::from(header).style(Style::default().fg(Color::Yellow))])
+    let mut cells: Vec<Cell> = Vec::new();
+    if selection_mode {
+        cells.push(Cell::from(""));
+    }
+    cells.push(Cell::from(header).style(Style::default().fg(Color::Yellow)));
+    Row::new(cells)
 }
 
-pub fn render(frame: &mut Frame, area: Rect, state: &ContainersState, tick_count: u64, columns: &ContainerColumns, polling_intervals_ms: u64) {
+pub fn render(frame: &mut Frame, area: Rect, state: &mut ContainersState, tick_count: u64, columns: &ContainerColumns, polling_intervals_ms: u64) {
 
     let (indicator_char, indicator_color) = if state.loading {
         ('⠋', Color::Yellow)
@@ -129,16 +134,20 @@ pub fn render(frame: &mut Frame, area: Rect, state: &ContainersState, tick_count
         let project = &state.items[idx].project;
         grouped.entry(if project.is_empty() { "Ungrouped".to_string() } else { project.clone() }).or_default().push(idx);
     }
+    let mut selected_row = 0;
     let all_rows: Vec<Row> = {
         let mut rows = Vec::new();
         let mut group_names: Vec<String> = grouped.keys().cloned().collect();
         group_names.sort();
         for group_name in group_names {
             let indices = &grouped[&group_name];
-            rows.push(project_group_header(&group_name, indices.len()));
+            rows.push(project_group_header(&group_name, indices.len(), state.selection_mode));
             for &idx in indices {
-                let c = &state.items[idx];
                 let is_selected = state.filtered.get(state.selected) == Some(&idx);
+                if is_selected {
+                    selected_row = rows.len();
+                }
+                let c = &state.items[idx];
                 let is_stopping = state.stopping_containers.contains(&c.id);
                 let is_starting = state.starting_containers.contains(&c.id);
                 let is_deleting = state.deleting_containers.contains(&c.id);
@@ -183,11 +192,7 @@ pub fn render(frame: &mut Frame, area: Rect, state: &ContainersState, tick_count
                     cells.push(Cell::from(check));
                 }
                 if columns.show_name {
-                    let name_display = if !c.project.is_empty() {
-                        format!("🐳 {} {}", indicator, &c.name)
-                    } else {
-                        format!("{} {}", indicator, &c.name)
-                    };
+                    let name_display = format!("{} {}", indicator, &c.name);
                     cells.push(Cell::from(name_display));
                 }
                 if columns.show_image {
@@ -221,8 +226,11 @@ pub fn render(frame: &mut Frame, area: Rect, state: &ContainersState, tick_count
         .header(header_row)
         .block(block);
 
-    let mut table_state = TableState::new().with_selected(state.selected);
+    let mut table_state = TableState::new()
+        .with_selected(Some(selected_row))
+        .with_offset(state.scroll_offset);
     frame.render_stateful_widget(table, area, &mut table_state);
+    state.scroll_offset = table_state.offset();
 
     if state.filter_active {
         crate::ui::render_filter_bar(frame, inner, &state.filter, "filter");

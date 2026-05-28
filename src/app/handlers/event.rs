@@ -22,9 +22,6 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         let code = key.code;
         let mods = key.modifiers;
 
-        if km.is_events_export(code, mods) {
-            return Some(AppEvent::ExportEvents);
-        }
         if km.is_jump_top(code, mods) {
             return Some(AppEvent::JumpTop);
         }

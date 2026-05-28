@@ -68,11 +68,6 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         if km.is_search(code, mods) {
             return Some(AppEvent::ActivateImageFilter);
         }
-        if code == KeyCode::Enter {
-            return state.images.filtered.get(state.images.selected)
-                .and_then(|&idx| state.images.items.get(idx))
-                .map(|img| AppEvent::RunImage(img.repository.clone(), img.tag.clone()));
-        }
         None
     }
 }

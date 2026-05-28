@@ -6,7 +6,7 @@ use ratatui::widgets::{Block, Borders, Cell, Paragraph, BorderType, Row, Table, 
 
 use crate::app::state::VolumesState;
 
-pub fn render(frame: &mut Frame, area: Rect, state: &VolumesState, columns: &crate::config::VolumeColumns, polling_intervals_ms: u64) {
+pub fn render(frame: &mut Frame, area: Rect, state: &mut VolumesState, columns: &crate::config::VolumeColumns, polling_intervals_ms: u64) {
 
     if state.show_column_picker {
         render_column_picker(frame, area, columns, state.column_picker_selection);
@@ -97,8 +97,11 @@ pub fn render(frame: &mut Frame, area: Rect, state: &VolumesState, columns: &cra
         .header(header_row)
         .block(block);
 
-    let mut table_state = TableState::new().with_selected(state.selected);
+    let mut table_state = TableState::new()
+        .with_selected(Some(state.selected))
+        .with_offset(state.scroll_offset);
     frame.render_stateful_widget(table, area, &mut table_state);
+    state.scroll_offset = table_state.offset();
 
 }
 

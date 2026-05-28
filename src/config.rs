@@ -187,14 +187,10 @@ pub struct Keybindings {
     pub remove_dangling_images: Vec<String>,
     #[serde(default = "default_prune_images", deserialize_with = "string_or_vec")]
     pub prune_images: Vec<String>,
-    #[serde(default = "default_events_export", deserialize_with = "string_or_vec")]
-    pub events_export: Vec<String>,
     #[serde(default = "default_jump_top", deserialize_with = "string_or_vec")]
     pub jump_top: Vec<String>,
     #[serde(default = "default_jump_bottom", deserialize_with = "string_or_vec")]
     pub jump_bottom: Vec<String>,
-    #[serde(default = "default_statistics_sort", deserialize_with = "string_or_vec")]
-    pub statistics_sort: Vec<String>,
     #[serde(default = "default_statistics_sort_desc", deserialize_with = "string_or_vec")]
     pub statistics_sort_desc: Vec<String>,
     #[serde(default = "default_logs_export", deserialize_with = "string_or_vec")]
@@ -231,10 +227,8 @@ default_keys! {
     default_remove_image => vec!["d"];
     default_remove_dangling_images => vec!["D"];
     default_prune_images => vec!["p"];
-    default_events_export => vec!["s"];
     default_jump_top => vec!["g"];
     default_jump_bottom => vec!["G"];
-    default_statistics_sort => vec!["s"];
     default_statistics_sort_desc => vec!["t"];
     default_logs_export => vec!["Ctrl+S"];
     default_toggle_timestamps => vec!["T"];
@@ -262,10 +256,8 @@ impl Default for Keybindings {
             remove_image: default_remove_image(),
             remove_dangling_images: default_remove_dangling_images(),
             prune_images: default_prune_images(),
-            events_export: default_events_export(),
             jump_top: default_jump_top(),
             jump_bottom: default_jump_bottom(),
-            statistics_sort: default_statistics_sort(),
             statistics_sort_desc: default_statistics_sort_desc(),
             logs_export: default_logs_export(),
             toggle_timestamps: default_toggle_timestamps(),
@@ -322,7 +314,6 @@ impl Keybindings {
             "".to_string(),
             "  EVENTS".to_string(),
             format!("    {}     Filter events", key_first(&self.search)),
-            format!("    {}     Save/export events", key_first(&self.events_export)),
             "".to_string(),
             "  STATISTICS".to_string(),
             "    ←/→   Cycle sort field".to_string(),
