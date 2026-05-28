@@ -203,32 +203,42 @@ pub struct Keybindings {
     pub toggle_timestamps: Vec<String>,
 }
 
-fn default_quit() -> Vec<String> { vec!["q".to_string()] }
-fn default_back() -> Vec<String> { vec!["Esc".to_string()] }
-fn default_help() -> Vec<String> { vec!["?".to_string()] }
-fn default_navigate_down() -> Vec<String> { vec!["j".to_string(), "Down".to_string()] }
-fn default_navigate_up() -> Vec<String> { vec!["k".to_string(), "Up".to_string()] }
-fn default_open_details() -> Vec<String> { vec!["Enter".to_string()] }
-fn default_open_logs() -> Vec<String> { vec!["l".to_string()] }
-fn default_open_shell() -> Vec<String> { vec!["s".to_string()] }
-fn default_start_stop() -> Vec<String> { vec!["t".to_string()] }
-fn default_restart() -> Vec<String> { vec!["r".to_string()] }
-fn default_delete() -> Vec<String> { vec!["d".to_string()] }
-fn default_search() -> Vec<String> { vec!["/".to_string()] }
-fn default_toggle_selection() -> Vec<String> { vec![" ".to_string()] }
-fn default_select_all() -> Vec<String> { vec!["Ctrl+A".to_string()] }
-fn default_navigate_images() -> Vec<String> { vec!["j".to_string(), "Down".to_string()] }
-fn default_run_image() -> Vec<String> { vec!["r".to_string()] }
-fn default_remove_image() -> Vec<String> { vec!["d".to_string()] }
-fn default_remove_dangling_images() -> Vec<String> { vec!["D".to_string()] }
-fn default_prune_images() -> Vec<String> { vec!["p".to_string()] }
-fn default_events_export() -> Vec<String> { vec!["s".to_string()] }
-fn default_jump_top() -> Vec<String> { vec!["g".to_string()] }
-fn default_jump_bottom() -> Vec<String> { vec!["G".to_string()] }
-fn default_statistics_sort() -> Vec<String> { vec!["s".to_string()] }
-fn default_statistics_sort_desc() -> Vec<String> { vec!["t".to_string()] }
-fn default_logs_export() -> Vec<String> { vec!["Ctrl+S".to_string()] }
-fn default_toggle_timestamps() -> Vec<String> { vec!["T".to_string()] }
+macro_rules! default_keys {
+    ($($name:ident => $default:expr);* $(;)?) => {
+        $(
+            fn $name() -> Vec<String> { $default.into_iter().map(|s| s.to_string()).collect() }
+        )*
+    };
+}
+
+default_keys! {
+    default_quit => vec!["q"];
+    default_back => vec!["Esc"];
+    default_help => vec!["?"];
+    default_navigate_down => vec!["j", "Down"];
+    default_navigate_up => vec!["k", "Up"];
+    default_open_details => vec!["Enter"];
+    default_open_logs => vec!["l"];
+    default_open_shell => vec!["s"];
+    default_start_stop => vec!["t"];
+    default_restart => vec!["r"];
+    default_delete => vec!["d"];
+    default_search => vec!["/"];
+    default_toggle_selection => vec![" "];
+    default_select_all => vec!["Ctrl+A"];
+    default_navigate_images => vec!["j", "Down"];
+    default_run_image => vec!["r"];
+    default_remove_image => vec!["d"];
+    default_remove_dangling_images => vec!["D"];
+    default_prune_images => vec!["p"];
+    default_events_export => vec!["s"];
+    default_jump_top => vec!["g"];
+    default_jump_bottom => vec!["G"];
+    default_statistics_sort => vec!["s"];
+    default_statistics_sort_desc => vec!["t"];
+    default_logs_export => vec!["Ctrl+S"];
+    default_toggle_timestamps => vec!["T"];
+}
 
 impl Default for Keybindings {
     fn default() -> Self {
