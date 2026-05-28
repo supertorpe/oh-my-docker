@@ -1,12 +1,47 @@
 use std::time::Duration;
 
 use bollard::Docker;
+use futures_util::Future;
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::app::event::AppEvent;
 use crate::app::event::ContainerOpts;
 use crate::config::PollingIntervals;
 use crate::docker;
+
+pub fn spawn_poller<T, F, E, Fut>(
+    interval_ms: u64,
+    docker: Docker,
+    tx: UnboundedSender<AppEvent>,
+    poll_fn: F,
+    success_event: E,
+    error_label: &'static str,
+) where
+    T: Send + 'static,
+    F: Fn(Docker) -> Fut + Send + 'static,
+    E: Fn(Vec<T>) -> AppEvent + Send + 'static,
+    Fut: Future<Output = Result<Vec<T>, String>> + Send,
+{
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_millis(interval_ms));
+        loop {
+            interval.tick().await;
+            let docker_clone = docker.clone();
+            match poll_fn(docker_clone).await {
+                Ok(data) => {
+                    if tx.send(success_event(data)).is_err() {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    if tx.send(AppEvent::Info(format!("{}: {}", error_label, e))).is_err() {
+                        break;
+                    }
+                }
+            }
+        }
+    });
+}
 
 pub fn spawn_container_poller(docker: Docker, tx: UnboundedSender<AppEvent>, intervals: PollingIntervals) {
     tokio::spawn(async move {
@@ -110,24 +145,14 @@ pub fn spawn_delete(docker: Docker, tx: UnboundedSender<AppEvent>, id: String) {
 }
 
 pub fn spawn_image_poller(docker: Docker, tx: UnboundedSender<AppEvent>, intervals: PollingIntervals) {
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_millis(intervals.images_ms));
-        loop {
-            interval.tick().await;
-            match docker::images::list_images(&docker).await {
-                Ok(images) => {
-                    if tx.send(AppEvent::ImagesUpdated(images)).is_err() {
-                        break;
-                    }
-                }
-                Err(e) => {
-                    if tx.send(AppEvent::Info(format!("Images: {}", e))).is_err() {
-                        break;
-                    }
-                }
-            }
-        }
-    });
+    spawn_poller(
+        intervals.images_ms,
+        docker,
+        tx,
+        |d| async move { docker::images::list_images(&d).await.map_err(|e| e.to_string()) },
+        AppEvent::ImagesUpdated,
+        "Images",
+    );
 }
 
 pub fn spawn_remove_image(docker: Docker, tx: UnboundedSender<AppEvent>, id: String) {
@@ -194,66 +219,36 @@ pub fn spawn_event_streamer(docker: Docker, tx: UnboundedSender<AppEvent>) {
 }
 
 pub fn spawn_statistics_poller(docker: Docker, tx: UnboundedSender<AppEvent>, intervals: PollingIntervals) {
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_millis(intervals.statistics_ms));
-        loop {
-            interval.tick().await;
-            match docker::statistics::list_statistics(&docker).await {
-                Ok(stats) => {
-                    if tx.send(AppEvent::StatisticsUpdated(stats)).is_err() {
-                        break;
-                    }
-                }
-                Err(e) => {
-                    if tx.send(AppEvent::Info(format!("Stats: {}", e))).is_err() {
-                        break;
-                    }
-                }
-            }
-        }
-    });
+    spawn_poller(
+        intervals.statistics_ms,
+        docker,
+        tx,
+        |d| async move { docker::statistics::list_statistics(&d).await.map_err(|e| e.to_string()) },
+        AppEvent::StatisticsUpdated,
+        "Stats",
+    );
 }
 
 pub fn spawn_network_poller(docker: Docker, tx: UnboundedSender<AppEvent>, intervals: PollingIntervals) {
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_millis(intervals.networks_ms));
-        loop {
-            interval.tick().await;
-            match docker::networks::list_networks(&docker).await {
-                Ok(networks) => {
-                    if tx.send(AppEvent::NetworksUpdated(networks)).is_err() {
-                        break;
-                    }
-                }
-                Err(e) => {
-                    if tx.send(AppEvent::Info(format!("Networks: {}", e))).is_err() {
-                        break;
-                    }
-                }
-            }
-        }
-    });
+    spawn_poller(
+        intervals.networks_ms,
+        docker,
+        tx,
+        |d| async move { docker::networks::list_networks(&d).await.map_err(|e| e.to_string()) },
+        AppEvent::NetworksUpdated,
+        "Networks",
+    );
 }
 
   pub fn spawn_volume_poller(docker: Docker, tx: UnboundedSender<AppEvent>, intervals: PollingIntervals) {
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_millis(intervals.volumes_ms));
-            loop {
-                interval.tick().await;
-                match docker::volumes::list_volumes(&docker).await {
-                    Ok(volumes) => {
-                        if tx.send(AppEvent::VolumesUpdated(volumes)).is_err() {
-                            break;
-                        }
-                    }
-                    Err(e) => {
-                        if tx.send(AppEvent::Info(format!("Volumes: {}", e))).is_err() {
-                            break;
-                        }
-                    }
-                }
-            }
-        });
+        spawn_poller(
+            intervals.volumes_ms,
+            docker,
+            tx,
+            |d| async move { docker::volumes::list_volumes(&d).await.map_err(|e| e.to_string()) },
+            AppEvent::VolumesUpdated,
+            "Volumes",
+        );
     }
 
 pub fn spawn_remove_dangling_images(docker: Docker, tx: UnboundedSender<AppEvent>) {
