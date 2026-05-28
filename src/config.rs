@@ -408,13 +408,13 @@ impl OmdockerConfig {
         config
     }
 
-    pub fn save(&self) {
+    pub fn save(&self) -> Result<(), String> {
         let path = Self::path();
         if let Some(parent) = path.parent() {
-            let _ = std::fs::create_dir_all(parent);
+            std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create config directory: {}", e))?;
         }
-        if let Ok(content) = toml::to_string(self) {
-            let _ = std::fs::write(&path, content);
-        }
+        let content = toml::to_string(self).map_err(|e| format!("Failed to serialize config: {}", e))?;
+        std::fs::write(&path, content).map_err(|e| format!("Failed to write config: {}", e))?;
+        Ok(())
     }
 }

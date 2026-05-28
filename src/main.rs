@@ -69,7 +69,7 @@ async fn main() -> Result<()> {
         let mut input = String::new();
         std::io::stdin().read_line(&mut input).ok();
         config.check_updates = Some(!matches!(input.trim().to_lowercase().as_str(), "n" | "no"));
-        config.save();
+        config.save().map_err(|e| anyhow::anyhow!(e))?;
     }
 
     let mut terminal = init_terminal()?;
@@ -204,7 +204,10 @@ fn process_event(mut state: app::state::AppState, event: app::event::AppEvent, d
         }
     }
     if needs_save {
-        state.config.save();
+        if let Err(e) = state.config.save() {
+            state.error = Some(format!("Failed to save config: {}", e));
+            state.error_timer = 5;
+        }
     }
     state
 }
