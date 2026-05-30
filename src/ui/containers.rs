@@ -72,6 +72,18 @@ pub fn render(frame: &mut Frame, area: Rect, state: &mut ContainersState, tick_c
     if state.docker_connected && state.items.is_empty() && !state.loading {
         let text = Text::from(vec![
             Line::from(Span::styled("  No containers found", Style::default().fg(Color::Yellow))),
+            Line::from(""),
+            Line::from(Span::styled("  r  run an image  /  search containers  Space  select mode", Style::default().fg(Color::DarkGray))),
+        ]);
+        frame.render_widget(Paragraph::new(text).block(block), area);
+        return;
+    }
+
+    if !state.filter.is_empty() && state.filtered.is_empty() && !state.items.is_empty() {
+        let text = Text::from(vec![
+            Line::from(Span::styled("  Nothing matched", Style::default().fg(Color::Yellow))),
+            Line::from(""),
+            Line::from(Span::styled("  Esc  clear filter  /  change filter", Style::default().fg(Color::DarkGray))),
         ]);
         frame.render_widget(Paragraph::new(text).block(block), area);
         return;
