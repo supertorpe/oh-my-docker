@@ -23,9 +23,7 @@ fn project_group_header(group_name: &str, count: usize, selection_mode: bool) ->
 pub fn render(frame: &mut Frame, area: Rect, state: &mut ContainersState, tick_count: u64, columns: &ContainerColumns, polling_intervals_ms: u64) {
 
     let (indicator_char, indicator_color) = if state.loading {
-        ('⠋', Color::Yellow)
-    } else if !state.docker_connected {
-        ('?', Color::Red)
+        (crate::ui::spinner_char(tick_count), Color::Yellow)
     } else {
         crate::ui::staleness_indicator(state.last_updated, polling_intervals_ms)
     };
@@ -61,6 +59,20 @@ pub fn render(frame: &mut Frame, area: Rect, state: &mut ContainersState, tick_c
             Line::from(""),
             Line::from(Span::styled(
                 format!("  {} Connecting to Docker...", spinner),
+                Style::default().fg(Color::Yellow),
+            )),
+            Line::from(""),
+        ]);
+        frame.render_widget(Paragraph::new(text).block(block), area);
+        return;
+    }
+
+    if state.loading && state.docker_connected {
+        let spinner = crate::ui::spinner_char(tick_count);
+        let text = Text::from(vec![
+            Line::from(""),
+            Line::from(Span::styled(
+                format!("  {} Loading containers...", spinner),
                 Style::default().fg(Color::Yellow),
             )),
             Line::from(""),

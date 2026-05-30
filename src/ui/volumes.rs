@@ -6,7 +6,7 @@ use ratatui::widgets::{Block, Borders, Cell, Paragraph, BorderType, Row, Table, 
 
 use crate::app::state::VolumesState;
 
-pub fn render(frame: &mut Frame, area: Rect, state: &mut VolumesState, columns: &crate::config::VolumeColumns, polling_intervals_ms: u64) {
+pub fn render(frame: &mut Frame, area: Rect, state: &mut VolumesState, columns: &crate::config::VolumeColumns, polling_intervals_ms: u64, tick_count: u64) {
 
     if state.show_column_picker {
         render_column_picker(frame, area, columns, state.column_picker_selection);
@@ -14,7 +14,7 @@ pub fn render(frame: &mut Frame, area: Rect, state: &mut VolumesState, columns: 
     }
 
     let (indicator_char, indicator_color) = if state.loading {
-        ('⠋', Color::Yellow)
+        (crate::ui::spinner_char(tick_count), Color::Yellow)
     } else {
         crate::ui::staleness_indicator(state.last_updated, polling_intervals_ms)
     };
@@ -31,6 +31,20 @@ pub fn render(frame: &mut Frame, area: Rect, state: &mut VolumesState, columns: 
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(indicator_color));
+
+    if state.loading && state.items.is_empty() {
+        let spinner = crate::ui::spinner_char(tick_count);
+        let text = Text::from(vec![
+            Line::from(""),
+            Line::from(Span::styled(
+                format!("  {} Loading volumes...", spinner),
+                Style::default().fg(Color::Yellow),
+            )),
+            Line::from(""),
+        ]);
+        frame.render_widget(Paragraph::new(text).block(block), area);
+        return;
+    }
 
     if state.items.is_empty() && !state.loading {
         let text = Text::from(vec![

@@ -330,7 +330,7 @@ fn render_column_picker(frame: &mut Frame, area: Rect, columns: &crate::config::
     ], selection);
 }
 
-pub fn render(frame: &mut Frame, area: Rect, state: &mut ImagesState, columns: &crate::config::ImageColumns, polling_intervals_ms: u64) {
+pub fn render(frame: &mut Frame, area: Rect, state: &mut ImagesState, columns: &crate::config::ImageColumns, polling_intervals_ms: u64, tick_count: u64) {
 
     if state.show_column_picker {
         render_column_picker(frame, area, columns, state.column_picker_selection);
@@ -338,7 +338,7 @@ pub fn render(frame: &mut Frame, area: Rect, state: &mut ImagesState, columns: &
     }
 
     let (indicator_char, indicator_color) = if state.loading {
-        ('⠋', Color::Yellow)
+        (crate::ui::spinner_char(tick_count), Color::Yellow)
     } else {
         crate::ui::staleness_indicator(state.last_updated, polling_intervals_ms)
     };
@@ -359,6 +359,20 @@ pub fn render(frame: &mut Frame, area: Rect, state: &mut ImagesState, columns: &
         .border_style(Style::default().fg(indicator_color));
 
     let inner = block.inner(area);
+
+    if state.loading && state.items.is_empty() {
+        let spinner = crate::ui::spinner_char(tick_count);
+        let text = Text::from(vec![
+            Line::from(""),
+            Line::from(Span::styled(
+                format!("  {} Loading images...", spinner),
+                Style::default().fg(Color::Yellow),
+            )),
+            Line::from(""),
+        ]);
+        frame.render_widget(Paragraph::new(text).block(block), area);
+        return;
+    }
 
     if state.items.is_empty() && !state.loading {
         let text = Text::from(vec![

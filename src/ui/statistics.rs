@@ -21,10 +21,10 @@ fn sort_label(sort_by: &StatSort, ascending: bool) -> String {
     format!(" (sorted by {}{})", field, dir)
 }
 
-pub fn render(frame: &mut Frame, area: Rect, state: &StatisticsState) {
+pub fn render(frame: &mut Frame, area: Rect, state: &StatisticsState, tick_count: u64) {
 
     let (indicator_char, indicator_color) = if state.loading {
-        ('⠋', Color::Yellow)
+        (crate::ui::spinner_char(tick_count), Color::Yellow)
     } else {
         let (ch, color) = if let Some(instant) = state.last_updated {
             let elapsed = instant.elapsed();
@@ -53,6 +53,20 @@ pub fn render(frame: &mut Frame, area: Rect, state: &StatisticsState) {
         .border_style(Style::default().fg(indicator_color));
 
     let inner = block.inner(area);
+
+    if state.loading && state.items.is_empty() {
+        let spinner = crate::ui::spinner_char(tick_count);
+        let text = Text::from(vec![
+            Line::from(""),
+            Line::from(Span::styled(
+                format!("  {} Loading statistics...", spinner),
+                Style::default().fg(Color::Yellow),
+            )),
+            Line::from(""),
+        ]);
+        frame.render_widget(Paragraph::new(text).block(block), area);
+        return;
+    }
 
     if state.items.is_empty() && !state.loading {
         let text = Text::from(vec![

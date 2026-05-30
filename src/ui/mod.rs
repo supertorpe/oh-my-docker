@@ -8,6 +8,12 @@ use crate::app::mode;
 use crate::app::mode::Mode;
 use crate::app::state::AppState;
 
+pub const SPINNER_CHARS: [char; 9] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠏'];
+
+pub fn spinner_char(tick_count: u64) -> char {
+    SPINNER_CHARS[(tick_count as usize / 2) % SPINNER_CHARS.len()]
+}
+
 pub fn staleness_indicator(last_updated: Option<std::time::Instant>, interval_ms: u64) -> (char, Color) {
     let fresh = Duration::from_millis(interval_ms * 2);
     let stale = Duration::from_millis(interval_ms * 5);
@@ -97,7 +103,7 @@ fn render_content(frame: &mut Frame, state: &mut AppState, area: Rect) {
                 logs_render_placeholder(frame, area);
             }
         }
-        Mode::Images => images::render(frame, area, &mut state.images, &state.config.image_columns, state.config.polling.images_ms),
+        Mode::Images => images::render(frame, area, &mut state.images, &state.config.image_columns, state.config.polling.images_ms, state.tick_count),
         Mode::ImageRun(_) => {
             if let Some(ref run) = state.navigation.image_run {
                 images::render_run(frame, area, run);
@@ -116,9 +122,9 @@ fn render_content(frame: &mut Frame, state: &mut AppState, area: Rect) {
             }
         }
         Mode::Events => events::render(frame, area, &mut state.events),
-        Mode::Statistics => statistics::render(frame, area, &state.statistics),
-        Mode::Networks => networks::render(frame, area, &mut state.networks, &state.config.network_columns, state.config.polling.networks_ms),
-        Mode::Volumes => volumes::render(frame, area, &mut state.volumes, &state.config.volume_columns, state.config.polling.volumes_ms),
+        Mode::Statistics => statistics::render(frame, area, &state.statistics, state.tick_count),
+        Mode::Networks => networks::render(frame, area, &mut state.networks, &state.config.network_columns, state.config.polling.networks_ms, state.tick_count),
+        Mode::Volumes => volumes::render(frame, area, &mut state.volumes, &state.config.volume_columns, state.config.polling.volumes_ms, state.tick_count),
         Mode::Explorer(_) => explorer::render(frame, area, state),
         Mode::Help => help::render(frame, area, &mut state.navigation.help, &state.config),
         Mode::ConfirmDialog { .. } => confirm_dialog::render(frame, area, state.navigation.mode_stack.current()),
