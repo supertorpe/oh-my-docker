@@ -51,16 +51,104 @@ fn highlight_text(text: &str, search: &str) -> Line<'static> {
     Line::from(spans)
 }
 
+fn ansi_color(n: u8) -> Color {
+    match n {
+        0 => Color::Black,
+        1 => Color::Red,
+        2 => Color::Green,
+        3 => Color::Yellow,
+        4 => Color::Blue,
+        5 => Color::Magenta,
+        6 => Color::Cyan,
+        7 => Color::White,
+        _ => Color::Reset,
+    }
+}
+
+fn ansi_bright_color(n: u8) -> Color {
+    match n {
+        0 => Color::DarkGray,
+        1 => Color::LightRed,
+        2 => Color::LightGreen,
+        3 => Color::LightYellow,
+        4 => Color::LightBlue,
+        5 => Color::LightMagenta,
+        6 => Color::LightCyan,
+        7 => Color::White,
+        _ => Color::Reset,
+    }
+}
+
+fn parse_ansi(message: &str) -> Vec<Span<'static>> {
+    let mut spans: Vec<Span> = Vec::new();
+    let mut style = Style::default().fg(Color::White);
+    let mut buf = String::new();
+    let mut chars = message.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if c == '\x1b' && chars.peek() == Some(&'[') {
+            if !buf.is_empty() {
+                spans.push(Span::styled(std::mem::take(&mut buf), style));
+            }
+            chars.next();
+
+            let mut code_str = String::new();
+            while let Some(&ch) = chars.peek() {
+                if ch.is_ascii_digit() || ch == ';' {
+                    code_str.push(ch);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+            chars.next();
+
+            for part in code_str.split(';') {
+                if let Ok(n) = part.parse::<u8>() {
+                    match n {
+                        0 => style = Style::default().fg(Color::White),
+                        1 => style = style.add_modifier(Modifier::BOLD),
+                        3 => style = style.add_modifier(Modifier::ITALIC),
+                        4 => style = style.add_modifier(Modifier::UNDERLINED),
+                        7 => style = style.add_modifier(Modifier::REVERSED),
+                        30..=37 => style = style.fg(ansi_color(n - 30)),
+                        40..=47 => style = style.bg(ansi_color(n - 40)),
+                        90..=97 => style = style.fg(ansi_bright_color(n - 90)),
+                        _ => {}
+                    }
+                }
+            }
+        } else {
+            buf.push(c);
+        }
+    }
+
+    if !buf.is_empty() {
+        spans.push(Span::styled(buf, style));
+    }
+
+    if spans.is_empty() {
+        spans.push(Span::styled(
+            message.to_string(),
+            Style::default().fg(Color::White),
+        ));
+    }
+
+    spans
+}
+
 pub fn render(frame: &mut Frame, area: Rect, state: &mut LogState) {
     let search_label = if !state.search.is_empty() {
         format!(" SEARCH '{}'", state.search)
     } else {
         String::new()
     };
+
     let title = if state.paused {
         format!(" LOGS — {} (PAUSED{}) ", state.container_id, search_label)
     } else {
-        format!(" LOGS — {} (LIVE{}) ", state.container_id, search_label)
+        let mode = if state.tail { "LIVE · FOLLOW" } else { "SCROLL" };
+        format!(" LOGS — {} ({}{}) ", state.container_id, mode, search_label)
     };
 
     let block = Block::default()
@@ -103,16 +191,16 @@ pub fn render(frame: &mut Frame, area: Rect, state: &mut LogState) {
                     highlight_text(&display_text, &state.search)
                 } else {
                     let ts = entry.timestamp.clone();
-                    let msg = entry.message.trim_end().to_string();
-                    Line::from(vec![
+                    let mut spans = vec![
                         Span::styled(ts, Style::default().fg(Color::DarkGray)),
-                        Span::styled(msg, Style::default().fg(Color::White)),
-                    ])
+                    ];
+                    spans.extend(parse_ansi(&message));
+                    Line::from(spans)
                 }
             } else if has_filter && message.to_lowercase().contains(&state.search.to_lowercase()) {
                 highlight_text(&message, &state.search)
             } else {
-                Line::from(Span::styled(message, Style::default().fg(Color::White)))
+                Line::from(parse_ansi(&message))
             }
         })
         .collect();
