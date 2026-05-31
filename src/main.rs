@@ -212,6 +212,16 @@ fn process_event(mut state: app::state::AppState, event: app::event::AppEvent, d
 fn handle_commands(commands: Vec<Command>, docker: &Option<Docker>, tx: &mpsc::UnboundedSender<app::event::AppEvent>, state: &app::state::AppState) -> Option<tokio::task::AbortHandle> {
     for cmd in commands {
         match cmd {
+            Command::RefreshContainers => {
+                let d = docker.clone().unwrap();
+                let tx = tx.clone();
+                tokio::spawn(async move {
+                    match docker::containers::list_containers(&d).await {
+                        Ok(containers) => { let _ = tx.send(AppEvent::ContainersUpdated(containers)); }
+                        Err(_) => {}
+                    }
+                });
+            }
             Command::CheckUpdate => update::spawn_check_update(tx.clone()),
             Command::DownloadUpdate { version, download_url } => {
                 update::spawn_download_update(tx.clone(), version, download_url);

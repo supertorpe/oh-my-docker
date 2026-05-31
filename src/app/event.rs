@@ -125,6 +125,7 @@ pub enum AppEvent {
     DockerReconnected,
     DockerConnectionLost(String),
 
+    ContainersRefreshNeeded,
     ContainersUpdated(Vec<ContainerSummary>),
     SelectContainer(usize),
     FilterContainers(String),
@@ -246,6 +247,7 @@ pub struct ContainerOpts {
 
 #[derive(Clone, Debug)]
 pub enum Command {
+    RefreshContainers,
     InspectContainer(String),
     FetchLogs(String),
     StartContainer(String),

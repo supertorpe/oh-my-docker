@@ -45,12 +45,27 @@ fn apply_filter(state: &mut AppState) {
 pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
     let mut commands = Vec::new();
     match event {
+        AppEvent::ContainersRefreshNeeded => {
+            commands.push(Command::RefreshContainers);
+        }
         AppEvent::ContainersUpdated(containers) => {
+            let prev_selected_id = state.containers.filtered.get(state.containers.selected)
+                .and_then(|&idx| state.containers.items.get(idx))
+                .map(|c| c.id.clone());
+
             state.containers.items = containers.clone();
             state.containers.loading = false;
             state.containers.docker_connected = true;
             state.containers.last_updated = Some(Instant::now());
             apply_filter(state);
+
+            if let Some(ref prev_id) = prev_selected_id {
+                if let Some(pos) = state.containers.filtered.iter().position(|&idx| {
+                    state.containers.items.get(idx).map(|c| &c.id == prev_id).unwrap_or(false)
+                }) {
+                    state.containers.selected = pos;
+                }
+            }
         }
         AppEvent::SelectContainer(idx) if *idx < state.containers.filtered.len() => {
             state.containers.selected = *idx;

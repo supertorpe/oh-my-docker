@@ -6,6 +6,10 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::app::event::{AppEvent, DockerEvent};
 
+const RELEVANT_ACTIONS: &[&str] = &[
+    "start", "stop", "die", "destroy", "create", "restart", "kill", "pause", "unpause",
+];
+
 pub async fn stream_events(docker: Docker, tx: UnboundedSender<AppEvent>) -> Result<()> {
     let options = EventsOptions::<String> {
         since: None,
@@ -22,10 +26,15 @@ pub async fn stream_events(docker: Docker, tx: UnboundedSender<AppEvent>) -> Res
                 let actor = event.actor.as_ref().and_then(|a| a.id.as_deref()).unwrap_or_default().to_string();
                 let entry = DockerEvent {
                     timestamp: chrono::Local::now().format("%H:%M:%S").to_string(),
-                    kind,
-                    action,
-                    actor,
+                    kind: kind.clone(),
+                    action: action.clone(),
+                    actor: actor.clone(),
                 };
+
+                if kind == "container" && !action.is_empty() && RELEVANT_ACTIONS.contains(&action.as_str()) {
+                    let _ = tx.send(AppEvent::ContainersRefreshNeeded);
+                }
+
                 if tx.send(AppEvent::EventsUpdated(vec![entry])).is_err() {
                     break;
                 }

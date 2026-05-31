@@ -43,9 +43,9 @@ pub fn spawn_poller<T, F, E, Fut>(
     });
 }
 
-pub fn spawn_container_poller(docker: Docker, tx: UnboundedSender<AppEvent>, intervals: PollingIntervals) {
+pub fn spawn_container_poller(docker: Docker, tx: UnboundedSender<AppEvent>, _intervals: PollingIntervals) {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_millis(intervals.containers_ms));
+        let mut interval = tokio::time::interval(Duration::from_millis(5000));
         let mut consecutive_errors = 0u8;
         loop {
             interval.tick().await;
