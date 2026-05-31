@@ -15,6 +15,7 @@ fn apply_filter(state: &mut AppState) {
         }
     });
 
+    state.containers.apply_sort();
     state.containers.reorder_by_group();
 }
 
@@ -117,6 +118,11 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             };
             state.containers.selected = 0;
             apply_filter(state);
+        }
+        AppEvent::ToggleSortDirection => {
+            state.containers.sort_ascending = !state.containers.sort_ascending;
+            state.containers.apply_sort();
+            state.containers.reorder_by_group();
         }
         AppEvent::BatchToggleContainers(ids) => {
             for id in ids {

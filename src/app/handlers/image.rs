@@ -1,6 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use crate::app::event::{AppEvent, ConfirmAction, ImageRunField};
 use crate::app::state::AppState;
+use crate::ui::resource_panel::{ImageResource, Resource};
 
 pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     if state.images.show_column_picker {
@@ -81,6 +82,19 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
                 "Prune all unused images?".to_string(),
                 ConfirmAction::PruneUnusedImages,
             ));
+        }
+        if km.is_sort_direction(code, mods) {
+            return Some(AppEvent::ToggleSortDirection);
+        }
+        if code == KeyCode::Left {
+            let n = ImageResource::column_headers().len();
+            let next = ((state.images.sort_column as i32 - 1).rem_euclid(n as i32)) as usize;
+            return Some(AppEvent::SortByColumn(next));
+        }
+        if code == KeyCode::Right {
+            let n = ImageResource::column_headers().len();
+            let next = ((state.images.sort_column as i32 + 1).rem_euclid(n as i32)) as usize;
+            return Some(AppEvent::SortByColumn(next));
         }
         if km.is_search(code, mods) {
             return Some(AppEvent::ActivateImageFilter);

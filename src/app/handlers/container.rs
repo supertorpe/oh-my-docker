@@ -2,6 +2,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use crate::app::event::{AppEvent, ConfirmAction};
 use crate::app::mode::Mode;
 use crate::app::state::AppState;
+use crate::ui::resource_panel::{ContainerResource, Resource};
 
 pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     if state.containers.show_column_picker {
@@ -60,6 +61,19 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         }
         if km.is_open_details(code, mods) {
             return Some(AppEvent::ShowDetails);
+        }
+        if km.is_sort_direction(code, mods) {
+            return Some(AppEvent::ToggleSortDirection);
+        }
+        if code == KeyCode::Left {
+            let n = ContainerResource::column_headers().len();
+            let next = ((state.containers.sort_column as i32 - 1).rem_euclid(n as i32)) as usize;
+            return Some(AppEvent::SortByColumn(next));
+        }
+        if code == KeyCode::Right {
+            let n = ContainerResource::column_headers().len();
+            let next = ((state.containers.sort_column as i32 + 1).rem_euclid(n as i32)) as usize;
+            return Some(AppEvent::SortByColumn(next));
         }
         if km.is_search(code, mods) {
             return Some(AppEvent::ActivateFilter);

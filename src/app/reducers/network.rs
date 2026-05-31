@@ -10,6 +10,10 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
         AppEvent::SelectNetwork(idx) if *idx < state.networks.items.len() => {
             state.networks.selected = *idx;
         }
+        AppEvent::ToggleSortDirection => {
+            state.networks.sort_ascending = !state.networks.sort_ascending;
+            state.networks.apply_sort();
+        }
         AppEvent::ToggleColumnPicker => {
             state.networks.show_column_picker = !state.networks.show_column_picker;
         }

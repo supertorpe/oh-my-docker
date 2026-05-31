@@ -205,6 +205,7 @@ pub enum AppEvent {
     CycleSortStat(i32),
     ToggleSortDirection,
 
+    SortByColumn(usize),
     ToggleColumnPicker,
     ToggleColumn(String),
 

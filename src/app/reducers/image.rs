@@ -129,6 +129,10 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                 commands.push(Command::SaveConfig);
             }
         }
+        AppEvent::ToggleSortDirection => {
+            state.images.sort_ascending = !state.images.sort_ascending;
+            state.images.apply_sort();
+        }
         AppEvent::ImageRunSubmit => {
             let mut errors: Vec<(usize, String)> = Vec::new();
             if let Some(ref run) = state.navigation.image_run {

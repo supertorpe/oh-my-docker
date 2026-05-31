@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::time::Instant;
 
@@ -16,6 +17,7 @@ pub trait Resource: 'static {
     fn column_headers() -> Vec<(&'static str, Constraint)>;
     fn cell_value(item: &Self::Summary, col: usize) -> String;
     fn matches_filter(item: &Self::Summary, term: &str) -> bool;
+    fn compare(item: &Self::Summary, other: &Self::Summary, col: usize) -> Ordering;
 
     fn row_style(item: &Self::Summary, is_selected: bool) -> Style {
         let _ = item;
@@ -52,6 +54,8 @@ pub struct ResourceState<T: Resource> {
     pub scroll_offset: usize,
     pub show_column_picker: bool,
     pub column_picker_selection: usize,
+    pub sort_column: usize,
+    pub sort_ascending: bool,
 }
 
 impl<T: Resource> Default for ResourceState<T> {
@@ -67,6 +71,8 @@ impl<T: Resource> Default for ResourceState<T> {
             scroll_offset: 0,
             show_column_picker: false,
             column_picker_selection: 0,
+            sort_column: 0,
+            sort_ascending: true,
         }
     }
 }
@@ -91,6 +97,18 @@ impl<T: Resource> ResourceState<T> {
         }
     }
 
+    pub fn apply_sort(&mut self) {
+        let col = self.sort_column;
+        if col >= T::column_headers().len() {
+            return;
+        }
+        let asc = self.sort_ascending;
+        self.filtered.sort_by(|&a, &b| {
+            let cmp = T::compare(&self.items[a], &self.items[b], col);
+            if asc { cmp } else { cmp.reverse() }
+        });
+    }
+
     pub fn reorder_by_group(&mut self) {
         let mut grouped: std::collections::HashMap<String, Vec<usize>> = std::collections::HashMap::new();
         for &idx in &self.filtered {
@@ -105,6 +123,19 @@ impl<T: Resource> ResourceState<T> {
         }
     }
 
+    pub fn sort_by_column(&mut self, col: usize) {
+        if col >= T::column_headers().len() {
+            return;
+        }
+        if col == self.sort_column {
+            self.sort_ascending = !self.sort_ascending;
+        } else {
+            self.sort_column = col;
+            self.sort_ascending = true;
+        }
+        self.apply_sort();
+    }
+
     pub fn update_items<F>(&mut self, new_items: Vec<T::Summary>, extra_filter: F)
     where
         F: Fn(&T::Summary) -> bool,
@@ -113,7 +144,79 @@ impl<T: Resource> ResourceState<T> {
         self.loading = false;
         self.last_updated = Some(Instant::now());
         self.apply_filter(extra_filter);
+        self.apply_sort();
     }
+}
+
+pub fn compute_column_positions(constraints: &[Constraint], spacing: u16, inner_width: u16) -> Vec<(u16, u16)> {
+    let n = constraints.len();
+    let gaps = spacing * (n as u16).saturating_sub(1);
+    let available = inner_width.saturating_sub(gaps);
+
+    let mut widths = vec![0u16; n];
+    let mut remaining = available as i32;
+
+    for (i, c) in constraints.iter().enumerate() {
+        if let Constraint::Length(w) = c {
+            widths[i] = *w;
+            remaining -= *w as i32;
+        }
+    }
+
+    let mut min_indices = Vec::new();
+    for (i, c) in constraints.iter().enumerate() {
+        if let Constraint::Min(w) = c {
+            min_indices.push(i);
+            widths[i] = *w;
+            remaining -= *w as i32;
+        }
+    }
+
+    let fill_indices: Vec<usize> = constraints.iter().enumerate()
+        .filter(|(_, c)| matches!(c, Constraint::Fill(_)))
+        .map(|(i, _)| i)
+        .collect();
+
+    if remaining > 0 {
+        let fill_weight: i32 = fill_indices.iter()
+            .map(|&i| {
+                if let Constraint::Fill(f) = constraints[i] { f as i32 } else { 0 }
+            })
+            .sum();
+        let total_weight = (min_indices.len() as i32 + fill_weight).max(1);
+
+        for &i in &min_indices {
+            let share = remaining / total_weight;
+            widths[i] += share as u16;
+            remaining -= share;
+        }
+        for &i in &fill_indices {
+            let f = if let Constraint::Fill(f) = constraints[i] { f as i32 } else { 1 };
+            let share = if fill_weight > 0 { remaining * f / fill_weight } else { remaining };
+            widths[i] += share as u16;
+            remaining -= share;
+        }
+    }
+
+    let mut positions = Vec::new();
+    let mut x: u16 = 0;
+    for &w in &widths {
+        positions.push((x, w));
+        x += w + spacing;
+    }
+    positions
+}
+
+pub fn header_column_at(col: u16, term_width: u16, constraints: &[Constraint], spacing: u16) -> Option<usize> {
+    let inner_width = term_width.saturating_sub(2);
+    let x = col.saturating_sub(1);
+    let positions = compute_column_positions(constraints, spacing, inner_width);
+    for (i, &(cx, cw)) in positions.iter().enumerate() {
+        if x >= cx && x < cx + cw {
+            return Some(i);
+        }
+    }
+    None
 }
 
 // Generic render for simple list views (images, volumes, networks)
@@ -204,16 +307,23 @@ pub fn render_simple_list<T: Resource>(
         .add_modifier(Modifier::BOLD);
 
     let mut widths: Vec<Constraint> = Vec::new();
-    let mut header_cells: Vec<&str> = Vec::new();
+    let mut header_names: Vec<&str> = Vec::new();
 
     for (h, w) in T::column_headers() {
         widths.push(w);
-        header_cells.push(h);
+        header_names.push(h);
     }
 
-    let header_row = Row::new(
-        header_cells.iter().map(|h| Cell::from(*h).style(header_style))
-    ).height(1);
+    let header_cells: Vec<Cell> = header_names.iter().enumerate().map(|(i, h)| {
+        let mut cell = Cell::from(*h).style(header_style);
+        if i == state.sort_column {
+            let arrow = if state.sort_ascending { " \u{25b4}" } else { " \u{25be}" };
+            cell = Cell::from(format!("{}{}", h, arrow)).style(header_style.fg(Color::Yellow));
+        }
+        cell
+    }).collect();
+
+    let header_row = Row::new(header_cells).height(1);
 
     let rows: Vec<Row> = state.filtered.iter().map(|&idx| {
         let item = &state.items[idx];
@@ -284,6 +394,15 @@ impl Resource for ContainerResource {
             || item.image.to_lowercase().contains(term)
             || item.state.to_lowercase().contains(term)
             || item.id.contains(term)
+    }
+    fn compare(item: &Self::Summary, other: &Self::Summary, col: usize) -> Ordering {
+        match col {
+            0 => item.name.to_lowercase().cmp(&other.name.to_lowercase()),
+            1 => item.image.to_lowercase().cmp(&other.image.to_lowercase()),
+            2 => item.state.cmp(&other.state),
+            3 => item.ports.cmp(&other.ports),
+            _ => Ordering::Equal,
+        }
     }
     fn group_by(item: &Self::Summary) -> Option<String> {
         if item.project.is_empty() { Some("Ungrouped".to_string()) } else { Some(item.project.clone()) }
@@ -438,20 +557,28 @@ pub fn render_containers(
     let selected_bg = Style::default().bg(Color::Blue).fg(Color::White);
 
     let mut widths = Vec::new();
-    let mut header_cells = Vec::new();
+    let mut header_names = Vec::new();
 
     if extra.selection_mode {
         widths.push(Constraint::Length(3));
-        header_cells.push("");
+        header_names.push("");
     }
     for (h, w) in ContainerResource::column_headers() {
         widths.push(w);
-        header_cells.push(h);
+        header_names.push(h);
     }
 
-    let header_row = Row::new(
-        header_cells.iter().map(|h| Cell::from(*h).style(header_style))
-    ).height(1);
+    let sort_col = state.sort_column + if extra.selection_mode { 1 } else { 0 };
+    let header_cells: Vec<Cell> = header_names.iter().enumerate().map(|(i, h)| {
+        let mut cell = Cell::from(*h).style(header_style);
+        if i == sort_col && !h.is_empty() {
+            let arrow = if state.sort_ascending { " \u{25b4}" } else { " \u{25be}" };
+            cell = Cell::from(format!("{}{}", h, arrow)).style(header_style.fg(Color::Yellow));
+        }
+        cell
+    }).collect();
+
+    let header_row = Row::new(header_cells).height(1);
 
     let mut grouped: std::collections::HashMap<String, Vec<usize>> = std::collections::HashMap::new();
     for &idx in &state.filtered {
@@ -591,6 +718,15 @@ impl Resource for ImageResource {
             || item.tag.to_lowercase().contains(term)
             || item.id.contains(term)
     }
+    fn compare(item: &Self::Summary, other: &Self::Summary, col: usize) -> Ordering {
+        match col {
+            0 => item.repository.to_lowercase().cmp(&other.repository.to_lowercase()),
+            1 => item.tag.to_lowercase().cmp(&other.tag.to_lowercase()),
+            2 => item.size.cmp(&other.size),
+            3 => item.id.cmp(&other.id),
+            _ => Ordering::Equal,
+        }
+    }
     fn column_picker_labels() -> Vec<&'static str> {
         vec!["Repository", "Tag", "Size", "ID"]
     }
@@ -623,6 +759,13 @@ impl Resource for VolumeResource {
     fn matches_filter(item: &Self::Summary, term: &str) -> bool {
         item.name.to_lowercase().contains(term)
             || item.driver.to_lowercase().contains(term)
+    }
+    fn compare(item: &Self::Summary, other: &Self::Summary, col: usize) -> Ordering {
+        match col {
+            0 => item.name.to_lowercase().cmp(&other.name.to_lowercase()),
+            1 => item.driver.to_lowercase().cmp(&other.driver.to_lowercase()),
+            _ => Ordering::Equal,
+        }
     }
     fn column_picker_labels() -> Vec<&'static str> {
         vec!["Name", "Driver", "Mountpoint"]
@@ -665,6 +808,18 @@ impl Resource for NetworkResource {
         item.name.to_lowercase().contains(term)
             || item.driver.to_lowercase().contains(term)
             || item.scope.to_lowercase().contains(term)
+    }
+    fn compare(item: &Self::Summary, other: &Self::Summary, col: usize) -> Ordering {
+        match col {
+            0 => item.name.to_lowercase().cmp(&other.name.to_lowercase()),
+            1 => item.id.cmp(&other.id),
+            2 => item.driver.to_lowercase().cmp(&other.driver.to_lowercase()),
+            3 => item.scope.to_lowercase().cmp(&other.scope.to_lowercase()),
+            4 => item.subnet.cmp(&other.subnet),
+            5 => item.gateway.cmp(&other.gateway),
+            6 => item.containers.cmp(&other.containers),
+            _ => Ordering::Equal,
+        }
     }
     fn column_picker_labels() -> Vec<&'static str> {
         vec!["Name", "ID", "Driver", "Scope", "IPAM"]

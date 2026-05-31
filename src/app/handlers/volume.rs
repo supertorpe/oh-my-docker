@@ -1,6 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use crate::app::event::{AppEvent, ConfirmAction};
 use crate::app::state::AppState;
+use crate::ui::resource_panel::{VolumeResource, Resource};
 
 pub fn handle_key_with_clipboard(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('y') {
@@ -46,6 +47,19 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         if km.is_navigate_up(code, mods) || code == KeyCode::Up {
             let prev = state.volumes.selected.saturating_sub(1);
             return Some(AppEvent::SelectVolume(prev));
+        }
+        if km.is_sort_direction(code, mods) {
+            return Some(AppEvent::ToggleSortDirection);
+        }
+        if code == KeyCode::Left {
+            let n = VolumeResource::column_headers().len();
+            let next = ((state.volumes.sort_column as i32 - 1).rem_euclid(n as i32)) as usize;
+            return Some(AppEvent::SortByColumn(next));
+        }
+        if code == KeyCode::Right {
+            let n = VolumeResource::column_headers().len();
+            let next = ((state.volumes.sort_column as i32 + 1).rem_euclid(n as i32)) as usize;
+            return Some(AppEvent::SortByColumn(next));
         }
         if km.is_delete(code, mods) {
             return state.volumes.items.get(state.volumes.selected)

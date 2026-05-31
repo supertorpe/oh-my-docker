@@ -162,7 +162,7 @@ pub struct KeyMap {
     pub prune_images: Vec<ParsedKey>,
     pub jump_top: Vec<ParsedKey>,
     pub jump_bottom: Vec<ParsedKey>,
-    pub statistics_sort_desc: Vec<ParsedKey>,
+    pub sort_direction: Vec<ParsedKey>,
     pub logs_export: Vec<ParsedKey>,
     pub toggle_timestamps: Vec<ParsedKey>,
 }
@@ -191,7 +191,7 @@ impl Default for KeyMap {
             prune_images: vec![parse_keybinding("p")],
             jump_top: vec![parse_keybinding("g")],
             jump_bottom: vec![parse_keybinding("G")],
-            statistics_sort_desc: vec![parse_keybinding("t")],
+            sort_direction: vec![parse_keybinding("Ctrl+T")],
             logs_export: vec![parse_keybinding("Ctrl+S")],
             toggle_timestamps: vec![parse_keybinding("T")],
         }
@@ -229,7 +229,7 @@ impl KeyMap {
             prune_images: parse_all(&keybindings.prune_images),
             jump_top: parse_all(&keybindings.jump_top),
             jump_bottom: parse_all(&keybindings.jump_bottom),
-            statistics_sort_desc: parse_all(&keybindings.statistics_sort_desc),
+            sort_direction: parse_all(&keybindings.sort_direction),
             logs_export: parse_all(&keybindings.logs_export),
             toggle_timestamps: parse_all(&keybindings.toggle_timestamps),
         }
@@ -307,8 +307,8 @@ impl KeyMap {
         any_match(&self.jump_bottom, code, modifiers)
     }
 
-    pub fn is_statistics_sort_desc(&self, code: KeyCode, modifiers: KeyModifiers) -> bool {
-        any_match(&self.statistics_sort_desc, code, modifiers)
+    pub fn is_sort_direction(&self, code: KeyCode, modifiers: KeyModifiers) -> bool {
+        any_match(&self.sort_direction, code, modifiers)
     }
 
     pub fn is_logs_export(&self, code: KeyCode, modifiers: KeyModifiers) -> bool {

@@ -10,7 +10,7 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     if code == KeyCode::Esc {
         return Some(AppEvent::Back);
     }
-    if km.is_statistics_sort_desc(code, mods) {
+    if km.is_sort_direction(code, mods) {
         return Some(AppEvent::ToggleSortDirection);
     }
     if code == KeyCode::Left {

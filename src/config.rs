@@ -191,8 +191,8 @@ pub struct Keybindings {
     pub jump_top: Vec<String>,
     #[serde(default = "default_jump_bottom", deserialize_with = "string_or_vec")]
     pub jump_bottom: Vec<String>,
-    #[serde(default = "default_statistics_sort_desc", deserialize_with = "string_or_vec")]
-    pub statistics_sort_desc: Vec<String>,
+    #[serde(default = "default_sort_direction", deserialize_with = "string_or_vec")]
+    pub sort_direction: Vec<String>,
     #[serde(default = "default_logs_export", deserialize_with = "string_or_vec")]
     pub logs_export: Vec<String>,
     #[serde(default = "default_toggle_timestamps", deserialize_with = "string_or_vec")]
@@ -229,9 +229,9 @@ default_keys! {
     default_prune_images => vec!["p"];
     default_jump_top => vec!["g"];
     default_jump_bottom => vec!["G"];
-    default_statistics_sort_desc => vec!["t"];
     default_logs_export => vec!["Ctrl+S"];
     default_toggle_timestamps => vec!["T"];
+    default_sort_direction => vec!["Ctrl+T"];
 }
 
 impl Default for Keybindings {
@@ -258,7 +258,7 @@ impl Default for Keybindings {
             prune_images: default_prune_images(),
             jump_top: default_jump_top(),
             jump_bottom: default_jump_bottom(),
-            statistics_sort_desc: default_statistics_sort_desc(),
+            sort_direction: default_sort_direction(),
             logs_export: default_logs_export(),
             toggle_timestamps: default_toggle_timestamps(),
         }
@@ -360,7 +360,7 @@ impl Keybindings {
             "".to_string(),
             "  STATISTICS".to_string(),
             "    ← / →      Cycle sort field".to_string(),
-            format!("    {}           Toggle sort direction", key_first(&self.statistics_sort_desc)),
+            format!("    {}           Toggle sort direction", key_first(&self.sort_direction)),
             "".to_string(),
             "  NETWORKS".to_string(),
             format!("    {} / {}     Navigate down", key_first(&self.navigate_down), "↓"),

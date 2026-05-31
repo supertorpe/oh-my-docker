@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 
+use ratatui::layout::Constraint;
+
 use crate::app::event::{AppEvent, Command, MouseClickKind};
 use crate::app::state::{AppState, StatSort};
 use crate::app::mode::{self, Mode, TAB_TITLES};
+use crate::ui::resource_panel::{header_column_at, ContainerResource, ImageResource, NetworkResource, VolumeResource, Resource};
 
 fn tab_from_col(col: u16, state: &AppState) -> Option<usize> {
     let padding_right: u16 = 1;
@@ -219,20 +222,7 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                 MouseClickKind::Left if is_base && *row >= 4 => {
                     let idx = (*row as i32 - 5) as usize;
                     match state.navigation.mode_stack.current() {
-                        Mode::Containers => {
-                            if let Some(fi) = container_filtered_idx_at_visual_row(state, *row) {
-                                state.containers.selected = fi;
-                            }
-                        }
-                        Mode::Images if idx < state.images.filtered.len() => {
-                            state.images.selected = idx;
-                        }
-                        Mode::Networks if idx < state.networks.filtered.len() => {
-                            state.networks.selected = idx;
-                        }
-                        Mode::Volumes if idx < state.volumes.filtered.len() => {
-                            state.volumes.selected = idx;
-                        }
+                        // --- Header row clicks (sorting) ---
                         Mode::Statistics if *row == 4 => {
                             if let Some((sort, has_secondary)) = statistics_column(*col, state.term_width) {
                                 let is_sibling = has_secondary
@@ -263,7 +253,79 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                                 resort_statistics(state);
                             }
                         }
+                        Mode::Containers if *row == 4 => {
+                            let mut constraints = Vec::new();
+                            if state.container_extra.selection_mode {
+                                constraints.push(Constraint::Length(3));
+                            }
+                            constraints.extend(ContainerResource::column_headers().into_iter().map(|(_, w)| w));
+                            if let Some(col) = header_column_at(*col, state.term_width, &constraints, 1) {
+                                let resource_col = col.saturating_sub(if state.container_extra.selection_mode { 1 } else { 0 });
+                                state.containers.sort_by_column(resource_col);
+                                state.containers.reorder_by_group();
+                            }
+                        }
+                        Mode::Images if *row == 4 => {
+                            let constraints: Vec<Constraint> = ImageResource::column_headers().into_iter().map(|(_, w)| w).collect();
+                            if let Some(col) = header_column_at(*col, state.term_width, &constraints, 1) {
+                                state.images.sort_by_column(col);
+                            }
+                        }
+                        Mode::Networks if *row == 4 => {
+                            let constraints: Vec<Constraint> = NetworkResource::column_headers().into_iter().map(|(_, w)| w).collect();
+                            if let Some(col) = header_column_at(*col, state.term_width, &constraints, 1) {
+                                state.networks.sort_by_column(col);
+                            }
+                        }
+                        Mode::Volumes if *row == 4 => {
+                            let constraints: Vec<Constraint> = VolumeResource::column_headers().into_iter().map(|(_, w)| w).collect();
+                            if let Some(col) = header_column_at(*col, state.term_width, &constraints, 1) {
+                                state.volumes.sort_by_column(col);
+                            }
+                        }
+                        // --- Data row clicks ---
+                        Mode::Containers => {
+                            if let Some(fi) = container_filtered_idx_at_visual_row(state, *row) {
+                                state.containers.selected = fi;
+                            }
+                        }
+                        Mode::Images if idx < state.images.filtered.len() => {
+                            state.images.selected = idx;
+                        }
+                        Mode::Networks if idx < state.networks.filtered.len() => {
+                            state.networks.selected = idx;
+                        }
+                        Mode::Volumes if idx < state.volumes.filtered.len() => {
+                            state.volumes.selected = idx;
+                        }
                         _ => {}
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        AppEvent::SortByColumn(col) => {
+            match state.navigation.mode_stack.current() {
+                Mode::Containers => {
+                    if *col < ContainerResource::column_headers().len() {
+                        state.containers.sort_by_column(*col);
+                        state.containers.reorder_by_group();
+                    }
+                }
+                Mode::Images => {
+                    if *col < ImageResource::column_headers().len() {
+                        state.images.sort_by_column(*col);
+                    }
+                }
+                Mode::Networks => {
+                    if *col < NetworkResource::column_headers().len() {
+                        state.networks.sort_by_column(*col);
+                    }
+                }
+                Mode::Volumes => {
+                    if *col < VolumeResource::column_headers().len() {
+                        state.volumes.sort_by_column(*col);
                     }
                 }
                 _ => {}
@@ -358,9 +420,29 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                     commands.extend(crate::app::reducers::event::reduce(state, &event));
                 }
                 AppEvent::StatisticsUpdated(_)
-                | AppEvent::CycleSortStat(_)
-                | AppEvent::ToggleSortDirection => {
+                | AppEvent::CycleSortStat(_) => {
                     commands.extend(crate::app::reducers::statistics::reduce(state, &event));
+                }
+                AppEvent::ToggleSortDirection => {
+                    use crate::app::mode::Mode;
+                    match state.navigation.mode_stack.current() {
+                        Mode::Statistics => {
+                            commands.extend(crate::app::reducers::statistics::reduce(state, &event));
+                        }
+                        Mode::Containers => {
+                            commands.extend(crate::app::reducers::container::reduce(state, &event));
+                        }
+                        Mode::Images => {
+                            commands.extend(crate::app::reducers::image::reduce(state, &event));
+                        }
+                        Mode::Networks => {
+                            commands.extend(crate::app::reducers::network::reduce(state, &event));
+                        }
+                        Mode::Volumes => {
+                            commands.extend(crate::app::reducers::volume::reduce(state, &event));
+                        }
+                        _ => {}
+                    }
                 }
                 AppEvent::NetworksUpdated(_)
                 | AppEvent::SelectNetwork(_) => {

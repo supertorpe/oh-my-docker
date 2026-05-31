@@ -10,6 +10,10 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
         AppEvent::SelectVolume(idx) if *idx < state.volumes.items.len() => {
             state.volumes.selected = *idx;
         }
+        AppEvent::ToggleSortDirection => {
+            state.volumes.sort_ascending = !state.volumes.sort_ascending;
+            state.volumes.apply_sort();
+        }
         AppEvent::ToggleColumnPicker => {
             state.volumes.show_column_picker = !state.volumes.show_column_picker;
         }

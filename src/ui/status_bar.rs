@@ -8,7 +8,7 @@ use crate::ui::theme;
 fn shortcuts(mode: &Mode) -> &'static str {
     match mode {
         Mode::Containers => {
-            " Enter:details  l:logs  s:shell  /:filter  S:status  Ctrl+U/D:page  g/G:top/bot  t:start/stop  r:restart  d:delete  Space:select "
+            " Enter:details  l:logs  s:shell  /:filter  S:status  ←/→:sort  ^T:direction  Ctrl+U/D:page  g/G:top/bot  t:start/stop  r:restart  d:delete  Space:select "
         }
         Mode::ContainerDetails(_) => {
             " j/k:scroll  PgUp/PgDn:page  g/G:top/bot  l:logs  s:shell  x:explorer  t:start/stop  r:restart  Esc:back "
@@ -17,7 +17,7 @@ fn shortcuts(mode: &Mode) -> &'static str {
             " j/k:scroll  PgUp/PgDn:page  g/G:top/bot  /:search  p:pause  T:timestamps  s:export  Esc:back "
         }
         Mode::Images => {
-            " /:filter  r:run  d:delete  D:dangling  p:prune  Ctrl+U/D:page  g/G:top/bot "
+            " ←/→:sort  ^T:direction  /:filter  r:run  d:delete  D:dangling  p:prune  Ctrl+U/D:page  g/G:top/bot "
         }
         Mode::ImageRun(_) => {
             " Tab/↓:next  ↑:prev  Enter:run  a:toggle  ^A:advanced  Esc:back "
@@ -32,13 +32,13 @@ fn shortcuts(mode: &Mode) -> &'static str {
             " /:filter  j/k:scroll  g/G:top/bot  Esc:back "
         }
         Mode::Statistics => {
-            " ←/→:sort field  t:direction  Esc:back "
+            " ←/→:sort field  ^T:direction  Esc:back "
         }
         Mode::Networks => {
-            " d:delete  Esc:back "
+            " ←/→:sort  ^T:direction  d:delete  Esc:back "
         }
         Mode::Volumes => {
-            " d:delete  Esc:back "
+            " ←/→:sort  ^T:direction  d:delete  Esc:back "
         }
         Mode::Explorer(_) => {
             " Tab:focus  ↑/↓:nav  Enter:dir  Backspace:up  PgUp/PgDn:page  g/G:top/bot  /:filter  r:rename  R:refresh  d:delete  ^C:copy  Esc:back "
