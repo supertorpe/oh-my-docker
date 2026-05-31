@@ -87,13 +87,13 @@ async fn main() -> Result<()> {
     let intervals = state.config.polling.clone();
     let docker: Option<Docker> = match docker::client::connect() {
         Ok(d) => {
-            state.containers.docker_connected = true;
+            state.container_extra.docker_connected = true;
             spawn_all_pollers(d.clone(), event_tx.clone(), intervals);
             Some(d)
         }
         Err(e) => {
             state.containers.loading = false;
-            state.containers.docker_reconnecting = true;
+            state.container_extra.docker_reconnecting = true;
             state.error = Some(format!("Docker connection failed: {}", e));
             state.error_timer = 10;
             let intervals = state.config.polling.clone();

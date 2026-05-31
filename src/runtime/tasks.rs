@@ -214,7 +214,9 @@ pub fn spawn_remove_volume(docker: Docker, tx: UnboundedSender<AppEvent>, name: 
 
 pub fn spawn_event_streamer(docker: Docker, tx: UnboundedSender<AppEvent>) {
     tokio::spawn(async move {
-        let _ = docker::events::stream_events(docker, tx).await;
+        if let Err(e) = docker::events::stream_events(docker.clone(), tx.clone()).await {
+            let _ = tx.send(AppEvent::Info(format!("Events stream ended: {}", e)));
+        }
     });
 }
 

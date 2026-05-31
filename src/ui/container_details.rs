@@ -4,7 +4,8 @@ use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Paragraph, BorderType};
 
-use crate::app::state::{DetailsState, ContainersState};
+use crate::app::state::DetailsState;
+use crate::ui::resource_panel::{ContainerResource, ContainerStateExtra, ResourceState};
 use crate::ui::theme;
 use serde_json::Value;
 
@@ -28,7 +29,7 @@ pub fn render_placeholder(frame: &mut Frame, _area: Rect) {
     frame.render_widget(paragraph, _area);
 }
 
-pub fn render(frame: &mut Frame, area: Rect, details: &mut DetailsState, containers: &ContainersState) {
+pub fn render(frame: &mut Frame, area: Rect, details: &mut DetailsState, containers: &ResourceState<ContainerResource>, container_extra: &ContainerStateExtra) {
     let block = Block::default()
         .title(format!(" CONTAINER DETAILS — {} ", details.container_id))
         .title_alignment(Alignment::Center)
@@ -38,7 +39,7 @@ pub fn render(frame: &mut Frame, area: Rect, details: &mut DetailsState, contain
 
     let inner = block.inner(area);
 
-    let text = build_text(details, containers);
+    let text = build_text(details, containers, container_extra);
     let max_offset = text.height().saturating_sub(inner.height as usize);
     let scroll_offset = details.scroll_offset.min(max_offset);
     details.scroll_offset = scroll_offset;
@@ -51,7 +52,7 @@ pub fn render(frame: &mut Frame, area: Rect, details: &mut DetailsState, contain
     frame.render_widget(paragraph, area);
 }
 
-fn build_text(details: &DetailsState, containers: &ContainersState) -> Text<'static> {
+fn build_text(details: &DetailsState, containers: &ResourceState<ContainerResource>, container_extra: &ContainerStateExtra) -> Text<'static> {
     let json_str = match details.json {
         Some(ref s) => s.clone(),
         None => return Text::from(vec![
@@ -66,9 +67,9 @@ fn build_text(details: &DetailsState, containers: &ContainersState) -> Text<'sta
         ]),
     };
 
-    let is_stopping = containers.stopping_containers.contains(&details.id);
-    let is_starting = containers.starting_containers.contains(&details.id);
-    let is_deleting = containers.deleting_containers.contains(&details.id);
+    let is_stopping = container_extra.stopping_containers.contains(&details.id);
+    let is_starting = container_extra.starting_containers.contains(&details.id);
+    let is_deleting = container_extra.deleting_containers.contains(&details.id);
 
     let container_state = containers.items.iter().find(|c| c.id == details.id).map(|c| c.state.as_str());
 

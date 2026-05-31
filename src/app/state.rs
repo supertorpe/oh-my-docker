@@ -1,62 +1,15 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::time::Instant;
 use tokio::task::AbortHandle;
 
 use crate::config::OmdockerConfig;
-use crate::app::event::{ContainerSummary, ImageEntry, LogEntry, DockerEvent, StatEntry, NetworkEntry, VolumeEntry};
+use crate::app::event::{LogEntry, DockerEvent, StatEntry};
 
 use crate::app::mode;
 use crate::app::navigation::NavigationState;
 use crate::input::keymap::KeyMap;
-
-#[derive(Clone, Debug)]
-pub struct ContainersState {
-    pub items: Vec<ContainerSummary>,
-    pub filtered: Vec<usize>,
-    pub selected: usize,
-    pub filter: String,
-    pub filter_active: bool,
-    pub loading: bool,
-    pub docker_connected: bool,
-    pub docker_reconnecting: bool,
-    pub stopping_containers: HashSet<String>,
-    pub starting_containers: HashSet<String>,
-    pub deleting_containers: HashSet<String>,
-    pub selection_mode: bool,
-    pub selected_ids: HashSet<String>,
-    pub last_updated: Option<Instant>,
-    pub show_column_picker: bool,
-    pub column_picker_selection: usize,
-    pub scroll_offset: usize,
-    pub status_filter: String,
-}
-
-impl Default for ContainersState {
-    fn default() -> Self {
-        Self {
-            items: Vec::new(),
-            filtered: Vec::new(),
-            selected: 0,
-            filter: String::new(),
-            filter_active: false,
-            loading: true,
-            docker_connected: false,
-            docker_reconnecting: false,
-            stopping_containers: HashSet::new(),
-            starting_containers: HashSet::new(),
-            deleting_containers: HashSet::new(),
-            selection_mode: false,
-            selected_ids: HashSet::new(),
-            last_updated: None,
-            show_column_picker: false,
-            column_picker_selection: 0,
-            scroll_offset: 0,
-            status_filter: String::new(),
-        }
-    }
-}
+use crate::ui::resource_panel::{ResourceState, ContainerResource, ContainerStateExtra, ImageResource, VolumeResource, NetworkResource};
 
 #[derive(Clone, Debug)]
 pub struct DetailsState {
@@ -78,37 +31,6 @@ pub struct LogState {
     pub tail: bool,
     pub show_timestamps: bool,
     pub viewport_height: usize,
-}
-
-#[derive(Clone, Debug)]
-pub struct ImagesState {
-    pub items: Vec<ImageEntry>,
-    pub filtered: Vec<usize>,
-    pub selected: usize,
-    pub filter: String,
-    pub filter_active: bool,
-    pub loading: bool,
-    pub last_updated: Option<Instant>,
-    pub show_column_picker: bool,
-    pub column_picker_selection: usize,
-    pub scroll_offset: usize,
-}
-
-impl Default for ImagesState {
-    fn default() -> Self {
-        Self {
-            items: Vec::new(),
-            filtered: Vec::new(),
-            selected: 0,
-            filter: String::new(),
-            filter_active: false,
-            loading: true,
-            last_updated: None,
-            show_column_picker: false,
-            column_picker_selection: 0,
-            scroll_offset: 0,
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -196,56 +118,6 @@ impl Default for StatisticsState {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct NetworksState {
-    pub items: Vec<NetworkEntry>,
-    pub selected: usize,
-    pub loading: bool,
-    pub last_updated: Option<Instant>,
-    pub show_column_picker: bool,
-    pub column_picker_selection: usize,
-    pub scroll_offset: usize,
-}
-
-impl Default for NetworksState {
-    fn default() -> Self {
-        Self {
-            items: Vec::new(),
-            selected: 0,
-            loading: true,
-            last_updated: None,
-            show_column_picker: false,
-            column_picker_selection: 0,
-            scroll_offset: 0,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct VolumesState {
-    pub items: Vec<VolumeEntry>,
-    pub selected: usize,
-    pub loading: bool,
-    pub last_updated: Option<Instant>,
-    pub show_column_picker: bool,
-    pub column_picker_selection: usize,
-    pub scroll_offset: usize,
-}
-
-impl Default for VolumesState {
-    fn default() -> Self {
-        Self {
-            items: Vec::new(),
-            selected: 0,
-            loading: true,
-            last_updated: None,
-            show_column_picker: false,
-            column_picker_selection: 0,
-            scroll_offset: 0,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Default)]
 pub struct HelpState {
     pub scroll_offset: usize,
@@ -258,17 +130,12 @@ pub enum ExplorerFocus {
 }
 
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
 pub struct ExplorerEntry {
     pub name: String,
     pub is_dir: bool,
-    pub size: u64,
-    pub modified: String,
-    pub permissions: String,
 }
 
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
 pub struct ExplorerPanel {
     pub path: String,
     pub items: Vec<ExplorerEntry>,
@@ -329,12 +196,13 @@ impl Default for ExplorerState {
 #[derive(Clone, Debug)]
 pub struct AppState {
     pub navigation: NavigationState,
-    pub containers: ContainersState,
-    pub images: ImagesState,
+    pub containers: ResourceState<ContainerResource>,
+    pub container_extra: ContainerStateExtra,
+    pub images: ResourceState<ImageResource>,
     pub events: EventsState,
     pub statistics: StatisticsState,
-    pub networks: NetworksState,
-    pub volumes: VolumesState,
+    pub networks: ResourceState<NetworkResource>,
+    pub volumes: ResourceState<VolumeResource>,
     pub explorer: ExplorerState,
     pub config: OmdockerConfig,
     pub keymap: KeyMap,
@@ -353,12 +221,13 @@ impl AppState {
     pub fn new() -> Self {
        Self {
             navigation: NavigationState::new(),
-             containers: ContainersState::default(),
-            images: ImagesState::default(),
+            containers: ResourceState::default(),
+            container_extra: ContainerStateExtra::new(),
+            images: ResourceState::default(),
             events: EventsState::default(),
             statistics: StatisticsState::default(),
-            networks: NetworksState::default(),
-            volumes: VolumesState::default(),
+            networks: ResourceState::default(),
+            volumes: ResourceState::default(),
             explorer: ExplorerState::default(),
             selected_tab: mode::mode_to_tab(&mode::Mode::Containers).unwrap_or(0),
             previous_tab: 0,

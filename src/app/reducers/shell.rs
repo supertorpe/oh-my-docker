@@ -10,7 +10,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             state.navigation.mode_stack.back();
             if let Some(s) = shell_data {
                 if s.stop_on_exit {
-                    state.containers.stopping_containers.insert(s.container_id.clone());
+                    state.container_extra.stopping_containers.insert(s.container_id.clone());
                     commands.push(Command::StopContainer(s.container_id));
                 }
             }

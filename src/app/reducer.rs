@@ -60,17 +60,17 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
         }
 
         AppEvent::DockerReconnecting => {
-            state.containers.docker_reconnecting = true;
+            state.container_extra.docker_reconnecting = true;
             state.containers.loading = true;
         }
         AppEvent::DockerReconnected => {
-            state.containers.docker_reconnecting = false;
-            state.containers.docker_connected = true;
+            state.container_extra.docker_reconnecting = false;
+            state.container_extra.docker_connected = true;
             state.containers.loading = false;
         }
         AppEvent::DockerConnectionLost(reason) => {
-            state.containers.docker_connected = false;
-            state.containers.docker_reconnecting = false;
+            state.container_extra.docker_connected = false;
+            state.container_extra.docker_reconnecting = false;
             state.containers.loading = false;
             state.error = Some(reason.clone());
             state.error_timer = 10;

@@ -72,9 +72,6 @@ pub async fn list_container_dir(
         entries.push(ExplorerEntry {
             name: name.to_string(),
             is_dir,
-            size: 0,
-            modified: String::new(),
-            permissions: String::new(),
         });
     }
 
@@ -91,7 +88,6 @@ pub async fn list_host_dir(path: &str) -> Result<Vec<ExplorerEntry>> {
 
     for entry in dir {
         let entry = entry?;
-        let metadata = entry.metadata()?;
         let name = entry.file_name()
             .to_string_lossy()
             .to_string();
@@ -100,12 +96,10 @@ pub async fn list_host_dir(path: &str) -> Result<Vec<ExplorerEntry>> {
             continue;
         }
 
+        let is_dir = entry.metadata().map(|m| m.is_dir()).unwrap_or(false);
         entries.push(ExplorerEntry {
             name,
-            is_dir: metadata.is_dir(),
-            size: metadata.len(),
-            modified: String::new(),
-            permissions: String::new(),
+            is_dir,
         });
     }
 

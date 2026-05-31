@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use crate::app::event::{AppEvent, Command};
 use crate::app::state::AppState;
 
@@ -7,9 +5,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
     let mut commands = Vec::new();
     match event {
         AppEvent::NetworksUpdated(networks) => {
-            state.networks.items = networks.clone();
-            state.networks.loading = false;
-            state.networks.last_updated = Some(Instant::now());
+            state.networks.update_items(networks.clone(), |_| true);
         }
         AppEvent::SelectNetwork(idx) if *idx < state.networks.items.len() => {
             state.networks.selected = *idx;

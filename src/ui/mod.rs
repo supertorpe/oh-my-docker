@@ -29,18 +29,16 @@ pub fn staleness_indicator(last_updated: Option<std::time::Instant>, interval_ms
 }
 
 pub mod column_picker;
-pub mod containers;
 pub mod container_details;
 pub mod explorer;
 pub mod logs;
-pub mod images;
+pub mod resource_panel;
 pub mod shell;
 pub mod shell_config;
 pub mod events;
 pub mod statistics;
-pub mod networks;
-pub mod volumes;
 pub mod help;
+pub mod image_run;
 pub mod confirm_dialog;
 pub mod tabs_bar;
 pub mod status_bar;
@@ -88,10 +86,10 @@ pub fn render(frame: &mut Frame, state: &mut AppState) {
 
 fn render_content(frame: &mut Frame, state: &mut AppState, area: Rect) {
     match state.navigation.mode_stack.current() {
-        Mode::Containers => containers::render(frame, area, &mut state.containers, state.tick_count, &state.config.container_columns, state.config.polling.containers_ms),
+        Mode::Containers => resource_panel::render_containers(frame, area, &mut state.containers, &state.container_extra, state.tick_count, state.config.polling.containers_ms),
         Mode::ContainerDetails(_) => {
             if let Some(ref mut details) = state.navigation.details {
-                container_details::render(frame, area, details, &state.containers);
+                container_details::render(frame, area, details, &state.containers, &state.container_extra);
             } else {
                 container_details::render_placeholder(frame, area);
             }
@@ -103,10 +101,10 @@ fn render_content(frame: &mut Frame, state: &mut AppState, area: Rect) {
                 logs_render_placeholder(frame, area);
             }
         }
-        Mode::Images => images::render(frame, area, &mut state.images, &state.config.image_columns, state.config.polling.images_ms, state.tick_count),
+        Mode::Images => resource_panel::render_simple_list::<resource_panel::ImageResource>(frame, area, &mut state.images, state.tick_count, state.config.polling.images_ms),
         Mode::ImageRun(_) => {
             if let Some(ref run) = state.navigation.image_run {
-                images::render_run(frame, area, run);
+                crate::ui::image_run::render_run(frame, area, run);
             }
         }
         Mode::Shell(_) => {
@@ -123,8 +121,8 @@ fn render_content(frame: &mut Frame, state: &mut AppState, area: Rect) {
         }
         Mode::Events => events::render(frame, area, &mut state.events),
         Mode::Statistics => statistics::render(frame, area, &state.statistics, state.tick_count),
-        Mode::Networks => networks::render(frame, area, &mut state.networks, &state.config.network_columns, state.config.polling.networks_ms, state.tick_count),
-        Mode::Volumes => volumes::render(frame, area, &mut state.volumes, &state.config.volume_columns, state.config.polling.volumes_ms, state.tick_count),
+        Mode::Networks => resource_panel::render_simple_list::<resource_panel::NetworkResource>(frame, area, &mut state.networks, state.tick_count, state.config.polling.networks_ms),
+        Mode::Volumes => resource_panel::render_simple_list::<resource_panel::VolumeResource>(frame, area, &mut state.volumes, state.tick_count, state.config.polling.volumes_ms),
         Mode::Explorer(_) => explorer::render(frame, area, state),
         Mode::Help => help::render(frame, area, &mut state.navigation.help, &state.config),
         Mode::ConfirmDialog { .. } => confirm_dialog::render(frame, area, state.navigation.mode_stack.current()),

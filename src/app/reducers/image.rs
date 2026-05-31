@@ -2,29 +2,17 @@ use std::time::Instant;
 
 use crate::app::event::{AppEvent, Command, ContainerOpts};
 use crate::app::state::AppState;
-use crate::search::fuzzy::Fuzzy;
+
 
 fn apply_filter(state: &mut AppState) {
-    let items = &state.images.items;
-    let filter = &state.images.filter;
-    if filter.is_empty() {
-        state.images.filtered = (0..items.len()).collect();
-    } else {
-        let fuzzy = Fuzzy::new();
-        let results = fuzzy.filter(filter, items, |i| &i.repository);
-        state.images.filtered = results.into_iter().map(|(i, _)| i).collect();
-    }
-    if state.images.selected >= state.images.filtered.len() {
-        state.images.selected = state.images.filtered.len().saturating_sub(1);
-    }
+    state.images.apply_filter(|_| true);
 }
 
 pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
     let mut commands = Vec::new();
     match event {
         AppEvent::ImagesUpdated(images) => {
-            state.images.items = images.clone();
-            state.images.loading = false;
+            state.images.update_items(images.clone(), |_| true);
             state.images.last_updated = Some(Instant::now());
             apply_filter(state);
         }
@@ -103,7 +91,6 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
         AppEvent::ImageRunToggleAdvanced => {
             if let Some(ref mut run) = state.navigation.image_run {
                 run.show_advanced = !run.show_advanced;
-                // Keep current field if possible; if going from advanced to basic and field is >= 9, reset to 0
                 if !run.show_advanced && run.field_focus >= 9 {
                     run.field_focus = 0;
                 }

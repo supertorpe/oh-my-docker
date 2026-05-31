@@ -85,8 +85,8 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
                 .map(|c| AppEvent::RestartContainer(c.id.clone()));
         }
         if km.is_start_stop(code, mods) {
-            if state.containers.selection_mode {
-                let ids: Vec<String> = state.containers.selected_ids.iter().cloned().collect();
+            if state.container_extra.selection_mode {
+                let ids: Vec<String> = state.container_extra.selected_ids.iter().cloned().collect();
                 if ids.is_empty() {
                     return state.containers.filtered.get(state.containers.selected)
                         .and_then(|&idx| state.containers.items.get(idx))
@@ -109,8 +109,8 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
             }
         }
         if km.is_delete(code, mods) {
-            if state.containers.selection_mode {
-                let ids: Vec<String> = state.containers.selected_ids.iter().cloned().collect();
+            if state.container_extra.selection_mode {
+                let ids: Vec<String> = state.container_extra.selected_ids.iter().cloned().collect();
                 if ids.is_empty() {
                     return state.containers.filtered.get(state.containers.selected)
                         .and_then(|&idx| state.containers.items.get(idx))
@@ -134,7 +134,7 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
             }
         }
         if km.is_toggle_selection(code, mods) {
-            if !state.containers.selection_mode {
+            if !state.container_extra.selection_mode {
                 return Some(AppEvent::ToggleSelectionMode);
             } else {
                 return state.containers.filtered.get(state.containers.selected)
@@ -143,7 +143,7 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
             }
         }
         if km.is_select_all(code, mods) {
-            if state.containers.selection_mode {
+            if state.container_extra.selection_mode {
                 return Some(AppEvent::SelectAllContainers);
             } else {
                 return None;
@@ -153,7 +153,7 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
             return Some(AppEvent::CycleStatusFilter);
         }
         if code == KeyCode::Esc {
-            if state.containers.selection_mode {
+            if state.container_extra.selection_mode {
                 return Some(AppEvent::ToggleSelectionMode);
             } else {
                 return None;

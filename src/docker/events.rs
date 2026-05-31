@@ -6,13 +6,21 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::app::event::{AppEvent, DockerEvent};
 
+fn unix_timestamp_1h_ago() -> String {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    (now - 3600).to_string()
+}
+
 const RELEVANT_ACTIONS: &[&str] = &[
     "start", "stop", "die", "destroy", "create", "restart", "kill", "pause", "unpause",
 ];
 
 pub async fn stream_events(docker: Docker, tx: UnboundedSender<AppEvent>) -> Result<()> {
     let options = EventsOptions::<String> {
-        since: None,
+        since: Some(unix_timestamp_1h_ago()),
         until: None,
         filters: std::collections::HashMap::new(),
     };

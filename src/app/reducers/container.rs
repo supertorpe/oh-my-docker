@@ -1,45 +1,21 @@
-use std::time::Instant;
-
 use crate::app::event::{AppEvent, Command};
 use crate::app::state::AppState;
-use crate::search::fuzzy::Fuzzy;
 
 fn apply_filter(state: &mut AppState) {
-    let items = &state.containers.items;
-    let filter = &state.containers.filter;
-    if filter.is_empty() {
-        state.containers.filtered = (0..items.len()).collect();
-    } else {
-        let fuzzy = Fuzzy::new();
-        let results = fuzzy.filter(filter, items, |c| &c.name);
-        if results.is_empty() {
-            let results = fuzzy.filter(filter, items, |c| &c.image);
-            state.containers.filtered = results.into_iter().map(|(i, _)| i).collect();
+    let _items = &state.containers.items;
+    let _filter = &state.containers.filter;
+
+    let status_filter = state.container_extra.status_filter.clone();
+
+    state.containers.apply_filter(|item| {
+        if status_filter.is_empty() {
+            true
         } else {
-            state.containers.filtered = results.into_iter().map(|(i, _)| i).collect();
+            item.state == status_filter
         }
-    }
-    // Apply status filter if active
-    if !state.containers.status_filter.is_empty() {
-        let sf = state.containers.status_filter.clone();
-        state.containers.filtered.retain(|&idx| {
-            state.containers.items.get(idx).map(|c| c.state == sf).unwrap_or(false)
-        });
-    }
-    // Reorder filtered to match grouped display order
-    let mut grouped: std::collections::HashMap<String, Vec<usize>> = std::collections::HashMap::new();
-    for &idx in &state.containers.filtered {
-        if let Some(c) = state.containers.items.get(idx) {
-            let group = if c.project.is_empty() { "Ungrouped" } else { &c.project };
-            grouped.entry(group.to_string()).or_default().push(idx);
-        }
-    }
-    let mut group_names: Vec<String> = grouped.keys().cloned().collect();
-    group_names.sort();
-    state.containers.filtered = group_names.into_iter().flat_map(|g| grouped.remove(&g).unwrap()).collect();
-    if state.containers.selected >= state.containers.filtered.len() {
-        state.containers.selected = state.containers.filtered.len().saturating_sub(1);
-    }
+    });
+
+    state.containers.reorder_by_group();
 }
 
 pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
@@ -53,10 +29,9 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                 .and_then(|&idx| state.containers.items.get(idx))
                 .map(|c| c.id.clone());
 
-            state.containers.items = containers.clone();
+            state.containers.update_items(containers.clone(), |_| true);
             state.containers.loading = false;
-            state.containers.docker_connected = true;
-            state.containers.last_updated = Some(Instant::now());
+            state.container_extra.docker_connected = true;
             apply_filter(state);
 
             if let Some(ref prev_id) = prev_selected_id {
@@ -82,37 +57,37 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
         }
         AppEvent::RestartContainer(id) => commands.push(Command::RestartContainer(id.clone())),
         AppEvent::StopContainer(id) => {
-            state.containers.stopping_containers.insert(id.clone());
+            state.container_extra.stopping_containers.insert(id.clone());
             commands.push(Command::StopContainer(id.clone()));
         }
         AppEvent::ContainerStopped(id) => {
-            state.containers.stopping_containers.remove(id);
-            state.containers.starting_containers.remove(id);
+            state.container_extra.stopping_containers.remove(id);
+            state.container_extra.starting_containers.remove(id);
         }
         AppEvent::ContainerStarted(id) => {
-            state.containers.starting_containers.remove(id);
+            state.container_extra.starting_containers.remove(id);
         }
         AppEvent::StartContainer(id) => commands.push(Command::StartContainer(id.clone())),
         AppEvent::ContainerDeleted(id) => {
-            state.containers.deleting_containers.remove(id);
+            state.container_extra.deleting_containers.remove(id);
         }
         AppEvent::ToggleSelectionMode => {
-            state.containers.selection_mode = !state.containers.selection_mode;
-            if !state.containers.selection_mode {
-                state.containers.selected_ids.clear();
+            state.container_extra.selection_mode = !state.container_extra.selection_mode;
+            if !state.container_extra.selection_mode {
+                state.container_extra.selected_ids.clear();
             }
         }
-        AppEvent::ToggleSelectContainer(id) if state.containers.selection_mode => {
-            if state.containers.selected_ids.contains(id) {
-                state.containers.selected_ids.remove(id);
+        AppEvent::ToggleSelectContainer(id) if state.container_extra.selection_mode => {
+            if state.container_extra.selected_ids.contains(id) {
+                state.container_extra.selected_ids.remove(id);
             } else {
-                state.containers.selected_ids.insert(id.clone());
+                state.container_extra.selected_ids.insert(id.clone());
             }
         }
-        AppEvent::SelectAllContainers if state.containers.selection_mode => {
+        AppEvent::SelectAllContainers if state.container_extra.selection_mode => {
             for &idx in &state.containers.filtered {
                 if let Some(c) = state.containers.items.get(idx) {
-                    state.containers.selected_ids.insert(c.id.clone());
+                    state.container_extra.selected_ids.insert(c.id.clone());
                 }
             }
         }
@@ -134,7 +109,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             }
         }
         AppEvent::CycleStatusFilter => {
-            state.containers.status_filter = match state.containers.status_filter.as_str() {
+            state.container_extra.status_filter = match state.container_extra.status_filter.as_str() {
                 "" => "running".to_string(),
                 "running" => "exited".to_string(),
                 "exited" => "paused".to_string(),
@@ -150,9 +125,9 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                     .map(|c| c.state == "running")
                     .unwrap_or(false);
                 if is_running {
-                    state.containers.stopping_containers.insert(id.clone());
+                    state.container_extra.stopping_containers.insert(id.clone());
                 } else {
-                    state.containers.starting_containers.insert(id.clone());
+                    state.container_extra.starting_containers.insert(id.clone());
                 }
             }
             commands.push(Command::BatchToggleContainers(ids.clone()));

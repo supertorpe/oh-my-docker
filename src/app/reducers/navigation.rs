@@ -144,22 +144,22 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                 match action {
                     ConfirmAction::DeleteContainer(id) => {
                         if id.is_empty() {
-                            if !state.containers.selected_ids.is_empty() {
-                                let ids: Vec<String> = state.containers.selected_ids.iter().cloned().collect();
-                                state.containers.selected_ids.clear();
-                                state.containers.selection_mode = false;
+                            if !state.container_extra.selected_ids.is_empty() {
+                                let ids: Vec<String> = state.container_extra.selected_ids.iter().cloned().collect();
+                                state.container_extra.selected_ids.clear();
+                                state.container_extra.selection_mode = false;
                                 commands.push(Command::BatchDeleteContainers(ids));
                             }
                         } else {
-                            state.containers.deleting_containers.insert(id.clone());
+                            state.container_extra.deleting_containers.insert(id.clone());
                             commands.push(Command::DeleteContainer(id));
                         }
                     }
                     ConfirmAction::BatchDeleteContainers => {
-                        if !state.containers.selected_ids.is_empty() {
-                            let ids: Vec<String> = state.containers.selected_ids.iter().cloned().collect();
-                            state.containers.selected_ids.clear();
-                            state.containers.selection_mode = false;
+                        if !state.container_extra.selected_ids.is_empty() {
+                            let ids: Vec<String> = state.container_extra.selected_ids.iter().cloned().collect();
+                            state.container_extra.selected_ids.clear();
+                            state.container_extra.selection_mode = false;
                             commands.push(Command::BatchDeleteContainers(ids));
                         }
                     }
