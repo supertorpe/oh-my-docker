@@ -81,6 +81,10 @@ async fn main() -> Result<()> {
         state.containers.filter_active = false;
     }
     state.config = config;
+    if state.config.mouse {
+        state.mouse_enabled = true;
+        crossterm::execute!(std::io::stdout(), crossterm::event::EnableMouseCapture)?;
+    }
     state.rebuild_keymap();
     let (event_tx, mut event_rx) = mpsc::unbounded_channel::<app::event::AppEvent>();
 
@@ -134,12 +138,20 @@ async fn main() -> Result<()> {
                 state = process_event(state, event, &docker, &event_tx);
             }
             Some(Ok(event)) = event_stream.next() => {
-                if let Event::Key(key) = event {
-                    if key.kind == KeyEventKind::Press || key.kind == KeyEventKind::Repeat {
-                        if let Some(app_event) = input::handler::handle_key(key, &state) {
+                match event {
+                    Event::Key(key) => {
+                        if key.kind == KeyEventKind::Press || key.kind == KeyEventKind::Repeat {
+                            if let Some(app_event) = input::handler::handle_key(key, &state) {
+                                state = process_event(state, app_event, &docker, &event_tx);
+                            }
+                        }
+                    }
+                    Event::Mouse(mouse) if state.mouse_enabled => {
+                        if let Some(app_event) = input::handler::handle_mouse(mouse) {
                             state = process_event(state, app_event, &docker, &event_tx);
                         }
                     }
+                    _ => {}
                 }
             }
             _ = ticker.tick() => {
@@ -262,6 +274,13 @@ fn handle_commands(commands: Vec<Command>, docker: &Option<Docker>, tx: &mpsc::U
                                 }
                             }
                         });
+                    }
+                    Command::ToggleMouseCapture => {
+                        if state.mouse_enabled {
+                            let _ = crossterm::execute!(std::io::stdout(), crossterm::event::EnableMouseCapture);
+                        } else {
+                            let _ = crossterm::execute!(std::io::stdout(), crossterm::event::DisableMouseCapture);
+                        }
                     }
                     _ => unreachable!(),
                 }
@@ -394,6 +413,7 @@ fn init_terminal() -> Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
 }
 
 fn restore_terminal() -> Result<()> {
+    crossterm::execute!(std::io::stdout(), crossterm::event::DisableMouseCapture)?;
     disable_raw_mode()?;
     stdout().execute(LeaveAlternateScreen)?;
     Ok(())

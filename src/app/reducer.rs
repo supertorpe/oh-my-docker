@@ -1,5 +1,146 @@
-use crate::app::event::{AppEvent, Command};
-use crate::app::state::AppState;
+use std::collections::HashMap;
+
+use crate::app::event::{AppEvent, Command, MouseClickKind};
+use crate::app::state::{AppState, StatSort};
+use crate::app::mode::{self, Mode, TAB_TITLES};
+
+fn tab_from_col(col: u16, state: &AppState) -> Option<usize> {
+    let padding_right: u16 = 1;
+    let divider_len: u16 = 3;
+    let mut x: u16 = 1;
+    for (i, title) in TAB_TITLES.iter().enumerate() {
+        let label = if i == 0 {
+            let running = state.containers.items.iter().filter(|c| c.state == "running").count();
+            let total = state.containers.items.len();
+            format!(" {} [{}/{}] ", title, running, total)
+        } else {
+            format!(" {} ", title)
+        };
+        let end = x + label.len() as u16;
+        if col >= x && col < end {
+            return Some(i);
+        }
+        x = end + padding_right;
+        if i < TAB_TITLES.len() - 1 {
+            x += divider_len;
+        }
+    }
+    None
+}
+
+fn scroll_state(state: &mut AppState, dir: i32) {
+    match state.navigation.mode_stack.current() {
+        Mode::Containers => {
+            let max = state.containers.filtered.len().saturating_sub(1);
+            let new = (state.containers.selected as i32 + dir).clamp(0, max as i32) as usize;
+            state.containers.selected = new;
+        }
+        Mode::Images => {
+            let max = state.images.filtered.len().saturating_sub(1);
+            let new = (state.images.selected as i32 + dir).clamp(0, max as i32) as usize;
+            state.images.selected = new;
+        }
+        Mode::Networks => {
+            let max = state.networks.filtered.len().saturating_sub(1);
+            let new = (state.networks.selected as i32 + dir).clamp(0, max as i32) as usize;
+            state.networks.selected = new;
+        }
+        Mode::Volumes => {
+            let max = state.volumes.filtered.len().saturating_sub(1);
+            let new = (state.volumes.selected as i32 + dir).clamp(0, max as i32) as usize;
+            state.volumes.selected = new;
+        }
+        Mode::Events => {
+            let height = state.events.viewport_height.max(1) as i32;
+            let max = (state.events.buffer.len() as i32 - height).max(0);
+            let new = (state.events.scroll_offset as i32 + dir).clamp(0, max) as usize;
+            state.events.scroll_offset = new;
+        }
+        Mode::Help => {
+            let new = (state.navigation.help.scroll_offset as i32 + dir).max(0) as usize;
+            state.navigation.help.scroll_offset = new;
+        }
+        _ => {}
+    }
+}
+
+fn container_filtered_idx_at_visual_row(state: &AppState, absolute_row: u16) -> Option<usize> {
+    let all_rows_idx = absolute_row as i32 - 5;
+    if all_rows_idx < 0 {
+        return None;
+    }
+    let mut grouped: HashMap<String, Vec<usize>> = HashMap::new();
+    for &idx in &state.containers.filtered {
+        let project = &state.containers.items[idx].project;
+        grouped.entry(if project.is_empty() { "Ungrouped".to_string() } else { project.clone() })
+            .or_default()
+            .push(idx);
+    }
+    let mut group_names: Vec<String> = grouped.keys().cloned().collect();
+    group_names.sort();
+    let mut cur_row = 0usize;
+    for group_name in &group_names {
+        let indices = &grouped[group_name];
+        if cur_row == all_rows_idx as usize {
+            return None;
+        }
+        cur_row += 1;
+        for &fi in indices {
+            if cur_row == all_rows_idx as usize {
+                return state.containers.filtered.iter().position(|&f| f == fi);
+            }
+            cur_row += 1;
+        }
+    }
+    None
+}
+
+fn statistics_column(col: u16, term_width: u16) -> Option<(StatSort, bool)> {
+    let inner_col = col.saturating_sub(1);
+    let inner_width = term_width.saturating_sub(2);
+    let spacing: u16 = 1;
+    let lengths: [u16; 5] = [8, 18, 14, 14, 6];
+    let lengths_sum: u16 = lengths.iter().sum();
+    let col0_w = 10u16.max(inner_width.saturating_sub(lengths_sum + spacing * 5));
+    if inner_col < col0_w {
+        return Some((StatSort::Name, false));
+    }
+    let mut accum = col0_w + spacing;
+    let sizes = [8, 18, 14, 14, 6];
+    let cols = [
+        StatSort::Cpu,
+        StatSort::Memory,
+        StatSort::NetRx,
+        StatSort::BlockRead,
+        StatSort::Pids,
+    ];
+    let dual = [false, false, true, true, false];
+    for (i, &w) in sizes.iter().enumerate() {
+        if inner_col >= accum && inner_col < accum + w {
+            return if dual[i] { Some((cols[i], true)) } else { Some((cols[i], false)) };
+        }
+        accum = accum + w + spacing;
+    }
+    None
+}
+
+fn resort_statistics(state: &mut AppState) {
+    let sort_by = state.statistics.sort_by;
+    let ascending = state.statistics.sort_ascending;
+    state.statistics.items.sort_by(|a, b| {
+        let cmp = match sort_by {
+            StatSort::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+            StatSort::Cpu => a.cpu_percent.partial_cmp(&b.cpu_percent).unwrap_or(std::cmp::Ordering::Equal),
+            StatSort::Memory => a.memory_usage.cmp(&b.memory_usage),
+            StatSort::NetRx => a.net_rx.cmp(&b.net_rx),
+            StatSort::NetTx => a.net_tx.cmp(&b.net_tx),
+            StatSort::BlockRead => a.block_read.cmp(&b.block_read),
+            StatSort::BlockWrite => a.block_write.cmp(&b.block_write),
+            StatSort::Pids => a.pids.cmp(&b.pids),
+        };
+        if ascending { cmp } else { cmp.reverse() }
+    });
+}
 
 pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
     let mut commands = Vec::new();
@@ -56,6 +197,76 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                 state.error = Some(msg.clone());
                 state.error_timer = 5;
                 state.error_persistent = false;
+            }
+        }
+
+        AppEvent::ToggleMouse => {
+            state.mouse_enabled = !state.mouse_enabled;
+            commands.push(Command::ToggleMouseCapture);
+        }
+
+        AppEvent::MouseClick { row, col, kind } => {
+            let is_base = mode::mode_to_tab(state.navigation.mode_stack.current()).is_some();
+            match kind {
+                MouseClickKind::ScrollUp => scroll_state(state, -1),
+                MouseClickKind::ScrollDown => scroll_state(state, 1),
+                MouseClickKind::Left if is_base && *row == 1 => {
+                    if let Some(tab) = tab_from_col(*col, state) {
+                        state.selected_tab = tab;
+                        state.navigation.mode_stack.replace_current(mode::tab_to_mode(tab));
+                    }
+                }
+                MouseClickKind::Left if is_base && *row >= 4 => {
+                    let idx = (*row as i32 - 5) as usize;
+                    match state.navigation.mode_stack.current() {
+                        Mode::Containers => {
+                            if let Some(fi) = container_filtered_idx_at_visual_row(state, *row) {
+                                state.containers.selected = fi;
+                            }
+                        }
+                        Mode::Images if idx < state.images.filtered.len() => {
+                            state.images.selected = idx;
+                        }
+                        Mode::Networks if idx < state.networks.filtered.len() => {
+                            state.networks.selected = idx;
+                        }
+                        Mode::Volumes if idx < state.volumes.filtered.len() => {
+                            state.volumes.selected = idx;
+                        }
+                        Mode::Statistics if *row == 4 => {
+                            if let Some((sort, has_secondary)) = statistics_column(*col, state.term_width) {
+                                let is_sibling = has_secondary
+                                    && matches!(
+                                        (sort, state.statistics.sort_by),
+                                        (StatSort::NetRx, StatSort::NetTx)
+                                            | (StatSort::NetTx, StatSort::NetRx)
+                                            | (StatSort::BlockRead, StatSort::BlockWrite)
+                                            | (StatSort::BlockWrite, StatSort::BlockRead)
+                                    );
+                                if sort == state.statistics.sort_by {
+                                    if has_secondary {
+                                        state.statistics.sort_by = match sort {
+                                            StatSort::NetRx => StatSort::NetTx,
+                                            StatSort::BlockRead => StatSort::BlockWrite,
+                                            _ => sort,
+                                        };
+                                    } else {
+                                        state.statistics.sort_ascending = !state.statistics.sort_ascending;
+                                    }
+                                } else if is_sibling {
+                                    state.statistics.sort_by = sort;
+                                    state.statistics.sort_ascending = !state.statistics.sort_ascending;
+                                } else {
+                                    state.statistics.sort_by = sort;
+                                    state.statistics.sort_ascending = true;
+                                }
+                                resort_statistics(state);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
             }
         }
 

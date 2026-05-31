@@ -215,6 +215,8 @@ pub struct AppState {
     pub tick_count: u64,
     pub log_streams: HashMap<String, AbortHandle>,
     pub quit: bool,
+    pub mouse_enabled: bool,
+    pub term_width: u16,
 }
 
 impl AppState {
@@ -240,6 +242,8 @@ impl AppState {
             tick_count: 0,
             log_streams: HashMap::new(),
             quit: false,
+            mouse_enabled: false,
+            term_width: 80,
         }
     }
 

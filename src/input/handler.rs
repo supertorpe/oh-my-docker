@@ -1,8 +1,35 @@
-use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use crate::app::event::AppEvent;
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent, MouseEventKind, MouseButton};
+use crate::app::event::{AppEvent, MouseClickKind};
 use crate::app::mode;
 use crate::app::mode::Mode;
 use crate::app::state::AppState;
+
+pub fn handle_mouse(event: MouseEvent) -> Option<AppEvent> {
+    match event.kind {
+        MouseEventKind::Down(MouseButton::Left) => {
+            Some(AppEvent::MouseClick {
+                row: event.row,
+                col: event.column,
+                kind: MouseClickKind::Left,
+            })
+        }
+        MouseEventKind::ScrollDown => {
+            Some(AppEvent::MouseClick {
+                row: event.row,
+                col: event.column,
+                kind: MouseClickKind::ScrollDown,
+            })
+        }
+        MouseEventKind::ScrollUp => {
+            Some(AppEvent::MouseClick {
+                row: event.row,
+                col: event.column,
+                kind: MouseClickKind::ScrollUp,
+            })
+        }
+        _ => None,
+    }
+}
 
 pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     if key.kind != KeyEventKind::Press && key.kind != KeyEventKind::Repeat {
@@ -19,10 +46,6 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
 
     if state.error_persistent {
         return Some(AppEvent::Info(String::new()));
-    }
-
-    if key.code == KeyCode::Char('U') {
-        return Some(AppEvent::CheckUpdate);
     }
 
     let in_input_mode = state.containers.filter_active
@@ -90,6 +113,15 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
             };
             return Some(AppEvent::Navigate(mode::tab_to_mode(next)));
         }
+    }
+
+    // Mouse toggle — works in any base mode
+    if code == KeyCode::Char('m') && !in_input_mode {
+        return Some(AppEvent::ToggleMouse);
+    }
+
+    if code == KeyCode::Char('U') {
+        return Some(AppEvent::CheckUpdate);
     }
 
     // Global view navigation shortcuts — only for base tab modes

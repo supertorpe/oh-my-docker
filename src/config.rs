@@ -399,6 +399,10 @@ impl Keybindings {
     }
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct OmdockerConfig {
     pub latest_shell: Option<String>,
@@ -420,6 +424,8 @@ pub struct OmdockerConfig {
     pub network_columns: NetworkColumns,
     #[serde(default)]
     pub volume_columns: VolumeColumns,
+    #[serde(default = "default_true")]
+    pub mouse: bool,
 }
 
 impl OmdockerConfig {
@@ -441,6 +447,7 @@ impl Default for OmdockerConfig {
             image_columns: ImageColumns::default(),
             network_columns: NetworkColumns::default(),
             volume_columns: VolumeColumns::default(),
+            mouse: true,
         }
     }
 }

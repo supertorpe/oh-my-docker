@@ -106,6 +106,13 @@ pub enum ConfirmAction {
 }
 
 #[derive(Clone, Debug)]
+pub enum MouseClickKind {
+    Left,
+    ScrollUp,
+    ScrollDown,
+}
+
+#[derive(Clone, Debug)]
 pub enum AppEvent {
     Navigate(Mode),
     Back,
@@ -179,6 +186,8 @@ pub enum AppEvent {
 
     CheckUpdate,
     UpdateAvailable(String, String),
+    ToggleMouse,
+    MouseClick { row: u16, col: u16, kind: MouseClickKind },
 
      EventsUpdated(Vec<DockerEvent>),
     ActivateEventsFilter,
@@ -260,6 +269,7 @@ pub enum Command {
     CreateContainer(ContainerOpts),
     RemoveNetwork(String),
     RemoveVolume(String),
+    ToggleMouseCapture,
     BatchToggleContainers(Vec<String>),
     BatchDeleteContainers(Vec<String>),
     SaveConfig,
