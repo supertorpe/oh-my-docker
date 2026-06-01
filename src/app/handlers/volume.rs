@@ -1,5 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use crate::app::event::{AppEvent, ConfirmAction};
+use crate::app::mode::Mode;
 use crate::app::state::AppState;
 use crate::ui::resource_panel::{VolumeResource, Resource};
 
@@ -20,7 +21,7 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         match (key.code, key.modifiers) {
             (KeyCode::Esc, _) => Some(AppEvent::ToggleColumnPicker),
             (KeyCode::Char(' '), _) | (KeyCode::Enter, _) => {
-                let names = ["name", "driver", "mountpoint"];
+                let names = ["name", "driver", "size", "mountpoint"];
                 let idx = state.volumes.column_picker_selection.min(names.len() - 1);
                 Some(AppEvent::ToggleColumn(names[idx].to_string()))
             }
@@ -104,6 +105,11 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
                         ConfirmAction::RemoveVolume(v.name.clone()),
                     ));
             }
+        }
+        if code == KeyCode::Char('x') && mods == KeyModifiers::NONE {
+            return state.volumes.filtered.get(state.volumes.selected)
+                .and_then(|&idx| state.volumes.items.get(idx))
+                .map(|v| AppEvent::Navigate(Mode::ExplorerVolume(v.mountpoint.clone(), v.name.clone())));
         }
         None
     }

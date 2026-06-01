@@ -4,12 +4,14 @@ use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table, TableState, BorderType};
 
+use crate::app::mode::Mode;
 use crate::app::state::{AppState, ExplorerPanel, ExplorerFocus};
 
 pub fn render(frame: &mut Frame, area: Rect, state: &mut AppState) {
+    let is_volume = matches!(state.navigation.mode_stack.current(), Mode::ExplorerVolume(_, _));
     let container_id = &state.explorer.container_id.clone();
 
-    if container_id.is_empty() {
+    if !is_volume && container_id.is_empty() {
         render_prompt(frame, area);
         return;
     }
@@ -31,19 +33,34 @@ pub fn render(frame: &mut Frame, area: Rect, state: &mut AppState) {
         ])
         .split(main_area);
 
-    let container_name = state.containers.items
-        .iter()
-        .find(|c| c.id == state.explorer.container_id)
-        .map(|c| c.name.as_str())
-        .unwrap_or(container_id);
-
     let current_focus = state.explorer.focus;
     let focus_left = current_focus == ExplorerFocus::Left;
 
-    let host_title = format!("Host ({})", state.explorer.host.path);
-    let container_title = format!("{} ({})", container_name, state.explorer.container.path);
-    render_panel(frame, chunks[0], &mut state.explorer.host, focus_left, &host_title, state.tick_count);
-    render_panel(frame, chunks[1], &mut state.explorer.container, !focus_left, &container_title, state.tick_count);
+    if is_volume {
+        let host_title = format!("Host ({})", state.explorer.host.path);
+        let volume_title = format!("Volume ({})", state.explorer.container.path);
+        render_panel(frame, chunks[0], &mut state.explorer.host, focus_left, &host_title, state.tick_count);
+        render_panel(frame, chunks[1], &mut state.explorer.container, !focus_left, &volume_title, state.tick_count);
+    } else {
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(48),
+                Constraint::Percentage(48),
+            ])
+            .split(main_area);
+
+        let container_name = state.containers.items
+            .iter()
+            .find(|c| c.id == state.explorer.container_id)
+            .map(|c| c.name.as_str())
+            .unwrap_or(container_id);
+
+        let host_title = format!("Host ({})", state.explorer.host.path);
+        let container_title = format!("{} ({})", container_name, state.explorer.container.path);
+        render_panel(frame, chunks[0], &mut state.explorer.host, focus_left, &host_title, state.tick_count);
+        render_panel(frame, chunks[1], &mut state.explorer.container, !focus_left, &container_title, state.tick_count);
+    }
 
     let toast_y = area.y + main_area.height;
     if let Some(ref msg) = state.explorer.transfer_message {

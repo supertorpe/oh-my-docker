@@ -107,6 +107,7 @@ pub struct VolumeColumns {
     pub show_name: bool,
     pub show_driver: bool,
     pub show_mountpoint: bool,
+    pub show_size: bool,
 }
 
 impl Default for VolumeColumns {
@@ -115,6 +116,7 @@ impl Default for VolumeColumns {
             show_name: true,
             show_driver: true,
             show_mountpoint: true,
+            show_size: true,
         }
     }
 }

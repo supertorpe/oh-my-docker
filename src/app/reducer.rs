@@ -71,6 +71,18 @@ fn scroll_state(state: &mut AppState, dir: i32) {
             let new = (state.navigation.help.scroll_offset as i32 + dir).max(0) as usize;
             state.navigation.help.scroll_offset = new;
         }
+        Mode::Explorer(_) | Mode::ExplorerVolume(_, _) => {
+            let panel = match state.explorer.focus {
+                crate::app::state::ExplorerFocus::Left => &mut state.explorer.host,
+                crate::app::state::ExplorerFocus::Right => &mut state.explorer.container,
+            };
+            let len = panel.all_items.len();
+            if len > 0 {
+                let max = len.saturating_sub(1);
+                let new = (panel.scroll_offset as i32 + dir).clamp(0, max as i32) as usize;
+                panel.scroll_offset = new;
+            }
+        }
         _ => {}
     }
 }

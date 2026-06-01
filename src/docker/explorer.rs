@@ -1,10 +1,17 @@
+use std::collections::HashMap;
+use std::path::Path;
+
 use anyhow::Result;
-use bollard::Docker;
+use bollard::container::{
+    Config, CreateContainerOptions, DownloadFromContainerOptions, ListContainersOptions,
+    LogOutput, RemoveContainerOptions, StartContainerOptions, StopContainerOptions,
+    UploadToContainerOptions,
+};
 use bollard::exec::{CreateExecOptions, StartExecOptions, StartExecResults};
-use bollard::container::{LogOutput, UploadToContainerOptions, DownloadFromContainerOptions};
+use bollard::models::HostConfig;
+use bollard::Docker;
 use futures_util::StreamExt;
 use tokio::sync::mpsc::UnboundedSender;
-use std::path::Path;
 
 use crate::app::event::AppEvent;
 use crate::app::state::ExplorerEntry;
@@ -108,6 +115,95 @@ pub async fn list_host_dir(path: &str) -> Result<Vec<ExplorerEntry>> {
     });
 
     Ok(entries)
+}
+
+const VOLUME_HELPER_IMAGE: &str = "alpine:latest";
+const VOLUME_MOUNT_PATH: &str = "/volume_data";
+
+fn volume_container_name(volume_name: &str) -> String {
+    format!("omdocker-vol-{}", volume_name)
+}
+
+fn volume_container_path(path: &str) -> String {
+    if path == "/" {
+        VOLUME_MOUNT_PATH.to_string()
+    } else {
+        format!("{}{}", VOLUME_MOUNT_PATH, path.trim_end_matches('/'))
+    }
+}
+
+/// Ensure a helper container exists for the given Docker volume, start it if
+/// stopped, and return its ID. The container mounts the volume and runs `sleep`
+/// for a very long time so it can be reused across directory listings.
+pub async fn ensure_volume_helper(docker: &Docker, volume_name: &str) -> Result<String> {
+    let name = volume_container_name(volume_name);
+
+    // Check if the container already exists (running or stopped)
+    let existing = docker
+        .list_containers::<&str>(Some(ListContainersOptions {
+            all: true,
+            filters: HashMap::from([("name", vec![name.as_str()])]),
+            ..Default::default()
+        }))
+        .await?
+        .into_iter()
+        .next();
+
+    if let Some(c) = existing {
+        if let Some(ref id) = c.id {
+            if c.state != Some("running".to_string()) {
+                docker.start_container(id, None::<StartContainerOptions<&str>>).await?;
+            }
+            return Ok(id.clone());
+        }
+    }
+
+    // Create a new helper container
+    let container = docker
+        .create_container(
+            Some(CreateContainerOptions {
+                name: name.as_str(),
+                platform: None,
+            }),
+            Config {
+                image: Some(VOLUME_HELPER_IMAGE),
+                cmd: Some(vec!["sleep".into(), "86400".into()]),
+                host_config: Some(HostConfig {
+                    binds: Some(vec![format!("{}:{}:z", volume_name, VOLUME_MOUNT_PATH)]),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .await?;
+
+    docker
+        .start_container(&container.id, None::<StartContainerOptions<&str>>)
+        .await?;
+
+    Ok(container.id)
+}
+
+/// Remove the helper container for a given Docker volume.
+pub async fn remove_volume_helper(docker: &Docker, volume_name: &str) -> Result<()> {
+    let name = volume_container_name(volume_name);
+    docker
+        .stop_container(&name, None::<StopContainerOptions>)
+        .await?;
+    docker
+        .remove_container(&name, None::<RemoveContainerOptions>)
+        .await?;
+    Ok(())
+}
+
+pub async fn list_volume_dir(
+    docker: &Docker,
+    volume_name: &str,
+    path: &str,
+) -> Result<Vec<ExplorerEntry>> {
+    let container_id = ensure_volume_helper(docker, volume_name).await?;
+    let container_path = volume_container_path(path);
+    list_container_dir(docker, &container_id, &container_path).await
 }
 
 pub async fn copy_to_container(

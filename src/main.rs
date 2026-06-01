@@ -238,7 +238,7 @@ fn handle_commands(commands: Vec<Command>, docker: &Option<Docker>, tx: &mpsc::U
             Command::DownloadUpdate { version, download_url } => {
                 update::spawn_download_update(tx.clone(), version, download_url);
             }
-            Command::ListContainerDir(_, _) | Command::ListHostDir(_) | Command::CopyToContainer(_, _, _) | Command::CopyFromContainer(_, _, _) | Command::DeleteHostFile(_) | Command::DeleteContainerFile(_, _) | Command::RenameHostFile(_, _) | Command::RenameContainerFile(_, _, _) | Command::FetchContainerWorkingDir(_) => {
+            Command::ListContainerDir(_, _) | Command::ListHostDir(_) | Command::ListVolumeDir(_, _) | Command::CopyToContainer(_, _, _) | Command::CopyFromContainer(_, _, _) | Command::DeleteHostFile(_) | Command::DeleteContainerFile(_, _) | Command::RenameHostFile(_, _) | Command::RenameContainerFile(_, _, _) | Command::FetchContainerWorkingDir(_) | Command::RemoveVolumeHelper(_) => {
                 handle_explorer_commands(cmd, docker.as_ref().unwrap(), tx, state);
             }
             _ => {
@@ -316,6 +316,21 @@ fn handle_explorer_commands(
                 }
             });
         }
+        Command::ListVolumeDir(volume_name, path) => {
+            let d = docker.clone();
+            let tx = tx.clone();
+            tokio::spawn(async move {
+                match docker::explorer::list_volume_dir(&d, &volume_name, &path).await {
+                    Ok(entries) => {
+                        let container_id = format!("__volume__:{}", volume_name);
+                        let _ = tx.send(app::event::AppEvent::ExplorerContainerDirUpdated(container_id, path, entries));
+                    }
+                    Err(e) => {
+                        let _ = tx.send(app::event::AppEvent::ExplorerTransferError(format!("Failed to list directory: {}", e)));
+                    }
+                }
+            });
+        }
         Command::CopyToContainer(container_id, host_path, container_path) => {
             let d = docker.clone();
             let tx = tx.clone();
@@ -361,6 +376,12 @@ fn handle_explorer_commands(
                         let _ = tx.send(app::event::AppEvent::ExplorerTransferError(format!("Delete failed: {}", e)));
                     }
                 }
+            });
+        }
+        Command::RemoveVolumeHelper(volume_name) => {
+            let d = docker.clone();
+            tokio::spawn(async move {
+                let _ = docker::explorer::remove_volume_helper(&d, &volume_name).await;
             });
         }
         Command::DeleteContainerFile(container_id, path) => {

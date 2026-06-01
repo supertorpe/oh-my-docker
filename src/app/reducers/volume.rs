@@ -39,11 +39,12 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
         }
         AppEvent::ToggleColumn(name) => {
             if state.volumes.show_column_picker {
-                let col_count = 3;
+                let col_count = 4;
                 crate::app::reducers::handle_column_nav(name, col_count, &mut state.volumes.column_picker_selection);
                 match name.as_str() {
                     "name" => state.config.volume_columns.show_name = !state.config.volume_columns.show_name,
                     "driver" => state.config.volume_columns.show_driver = !state.config.volume_columns.show_driver,
+                    "size" => state.config.volume_columns.show_size = !state.config.volume_columns.show_size,
                     "mountpoint" => state.config.volume_columns.show_mountpoint = !state.config.volume_columns.show_mountpoint,
                     _ => {}
                 }

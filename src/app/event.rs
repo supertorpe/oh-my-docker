@@ -65,6 +65,7 @@ pub struct VolumeEntry {
     pub name: String,
     pub driver: String,
     pub mountpoint: String,
+    pub size: i64,
 }
 
 #[derive(Clone, Debug)]
@@ -289,6 +290,7 @@ pub enum Command {
     ExportLogs(String, Vec<String>),
     ListContainerDir(String, String),
     ListHostDir(String),
+    ListVolumeDir(String, String),
     CopyToContainer(String, String, String),
     CopyFromContainer(String, String, String),
     DeleteHostFile(String),
@@ -296,4 +298,5 @@ pub enum Command {
     RenameHostFile(String, String),
     RenameContainerFile(String, String, String),
     FetchContainerWorkingDir(String),
+    RemoveVolumeHelper(String),
 }

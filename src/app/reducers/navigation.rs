@@ -94,6 +94,30 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             }
             state.navigation.mode_stack.push(mode.clone());
         }
+        AppEvent::Navigate(mode @ Mode::ExplorerVolume(_, _)) => {
+            if let Mode::ExplorerVolume(_mountpoint, name) = &mode {
+                state.explorer.container_id = format!("__volume__:{}", name);
+                state.explorer.host.path = std::env::current_dir()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
+                state.explorer.host.items.clear();
+                state.explorer.host.selected = 0;
+                state.explorer.host.loading = true;
+                state.explorer.container.path = "/".to_string();
+                state.explorer.container.items.clear();
+                state.explorer.container.selected = 0;
+                state.explorer.container.loading = true;
+                state.explorer.transfer_message = None;
+                state.explorer.transfer_error = None;
+                state.explorer.transfer_message_clear_tick = 0;
+                state.explorer.transfer_error_clear_tick = 0;
+                state.explorer.focus = crate::app::state::ExplorerFocus::Left;
+                commands.push(Command::ListHostDir(state.explorer.host.path.clone()));
+                commands.push(Command::ListVolumeDir(name.clone(), "/".to_string()));
+            }
+            state.navigation.mode_stack.push(mode.clone());
+        }
         AppEvent::Navigate(mode) => {
             if mode::mode_to_tab(mode).is_some() {
                 if *mode == Mode::Help {
@@ -111,6 +135,10 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             }
         }
         AppEvent::Back => {
+            use crate::app::mode::Mode;
+            if let Mode::ExplorerVolume(_, name) = state.navigation.mode_stack.current() {
+                commands.push(Command::RemoveVolumeHelper(name.clone()));
+            }
             if let Some(ref logs) = state.navigation.logs {
                 if let Some(handle) = state.log_streams.remove(&logs.container_id) {
                     handle.abort();

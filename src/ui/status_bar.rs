@@ -40,8 +40,8 @@ fn shortcuts(mode: &Mode) -> &'static str {
         Mode::Volumes => {
             " ←/→:sort  ^T:direction  d:delete  Space:select  Esc:back "
         }
-        Mode::Explorer(_) => {
-            " Tab:focus  ↑/↓:nav  Enter:dir  Backspace:up  PgUp/PgDn:page  g/G:top/bot  /:filter  r:rename  R:refresh  d:delete  ^C:copy  Esc:back "
+        Mode::Explorer(_) | Mode::ExplorerVolume(_, _) => {
+            " ↑/↓:nav  Enter:dir  Backspace:up  PgUp/PgDn:page  g/G:top/bot  /:filter  r:rename  R:refresh  d:delete  Esc:back "
         }
         Mode::Help => {
             " Esc:back  j/k:scroll  PgUp/PgDn:page  g/G:top/bot "

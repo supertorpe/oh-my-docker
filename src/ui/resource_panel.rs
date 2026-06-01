@@ -763,6 +763,7 @@ impl Resource for VolumeResource {
         vec![
             ("NAME", Constraint::Min(15)),
             ("DRIVER", Constraint::Length(10)),
+            ("SIZE", Constraint::Length(8)),
             ("MOUNTPOINT", Constraint::Fill(1)),
         ]
     }
@@ -770,7 +771,18 @@ impl Resource for VolumeResource {
         match col {
             0 => item.name.clone(),
             1 => item.driver.clone(),
-            2 => item.mountpoint.clone(),
+            2 => {
+                if item.size > 1_000_000_000 {
+                    format!("{:.1}GB", item.size as f64 / 1_000_000_000.0)
+                } else if item.size > 1_000_000 {
+                    format!("{:.1}MB", item.size as f64 / 1_000_000.0)
+                } else if item.size > 1_000 {
+                    format!("{:.1}KB", item.size as f64 / 1_000.0)
+                } else {
+                    format!("{}B", item.size)
+                }
+            }
+            3 => item.mountpoint.clone(),
             _ => String::new(),
         }
     }
@@ -782,11 +794,12 @@ impl Resource for VolumeResource {
         match col {
             0 => item.name.to_lowercase().cmp(&other.name.to_lowercase()),
             1 => item.driver.to_lowercase().cmp(&other.driver.to_lowercase()),
+            2 => item.size.cmp(&other.size),
             _ => Ordering::Equal,
         }
     }
     fn column_picker_labels() -> Vec<&'static str> {
-        vec!["Name", "Driver", "Mountpoint"]
+        vec!["Name", "Driver", "Size", "Mountpoint"]
     }
     fn item_id(item: &Self::Summary) -> String {
         item.name.clone()

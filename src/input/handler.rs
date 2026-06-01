@@ -159,6 +159,6 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         Mode::Volumes => crate::app::handlers::volume::handle_key_with_clipboard(key, state),
         Mode::Help => crate::app::handlers::navigation::handle_help_key(key, state),
         Mode::ConfirmDialog { .. } => crate::app::handlers::navigation::handle_confirm_dialog_key(key),
-        Mode::Explorer(_) => crate::app::handlers::explorer::handle_key(key, state),
+        Mode::Explorer(_) | Mode::ExplorerVolume(_, _) => crate::app::handlers::explorer::handle_key(key, state),
     }
 }

@@ -14,6 +14,7 @@ pub enum Mode {
     Networks,
     Volumes,
     Explorer(String),
+    ExplorerVolume(String, String),
     Help,
     ConfirmDialog {
         prompt: String,

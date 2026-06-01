@@ -1,5 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use crate::app::event::{AppEvent, ConfirmAction};
+use crate::app::mode::Mode;
 use crate::app::state::AppState;
 use crate::app::state::ExplorerFocus;
 
@@ -8,203 +9,133 @@ fn max_selected(item_count: usize, show_parent: bool) -> usize {
 }
 
 pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
-    if state.explorer.host.filter_active || state.explorer.container.filter_active {
+    let is_volume = matches!(state.navigation.mode_stack.current(), Mode::ExplorerVolume(_, _));
+
+    if state.explorer.host.filter_active || (!is_volume && state.explorer.container.filter_active) {
         return handle_filter_input(key, state);
     }
-    if state.explorer.host.rename_active || state.explorer.container.rename_active {
+    if state.explorer.host.rename_active || (!is_volume && state.explorer.container.rename_active) {
         return handle_rename_input(key, state);
     }
 
     let code = key.code;
     let mods = key.modifiers;
 
-    // Tab to switch focus
-    if (code == KeyCode::Tab && mods == KeyModifiers::NONE)
-        || code == KeyCode::BackTab
-        || (code == KeyCode::Tab && mods == KeyModifiers::SHIFT)
-    {
-        return Some(AppEvent::ExplorerSelect);
+    // Tab to switch focus (not in volume mode)
+    if !is_volume {
+        if (code == KeyCode::Tab && mods == KeyModifiers::NONE)
+            || code == KeyCode::BackTab
+            || (code == KeyCode::Tab && mods == KeyModifiers::SHIFT)
+        {
+            return Some(AppEvent::ExplorerSelect);
+        }
     }
 
     // Backspace to go up
     if code == KeyCode::Backspace {
-        return match state.explorer.focus {
-            ExplorerFocus::Left => Some(AppEvent::ExplorerHostGoUp),
-            ExplorerFocus::Right => Some(AppEvent::ExplorerContainerGoUp),
-        };
+        return Some(AppEvent::ExplorerHostGoUp);
     }
 
-    // Navigation based on focus
-    match state.explorer.focus {
-        ExplorerFocus::Left => {
-            let show_parent = state.explorer.host.path != "/";
-            let max = max_selected(state.explorer.host.items.len(), show_parent);
+    let host_selected = is_volume || state.explorer.focus == ExplorerFocus::Left;
+    let selected = if host_selected { state.explorer.host.selected } else { state.explorer.container.selected };
+    let path = if host_selected { &state.explorer.host.path } else { &state.explorer.container.path };
+    let items = if host_selected { &state.explorer.host.items } else { &state.explorer.container.items };
+    let show_parent = *path != "/";
+    let max = if host_selected {
+        max_selected(items.len(), show_parent)
+    } else {
+        max_selected(items.len(), show_parent)
+    };
 
-            if key_matches_nav_down(key, &state.keymap) {
-                let next = (state.explorer.host.selected + 1).min(max);
-                return Some(AppEvent::ExplorerHostSelect(next));
-            }
-            if key_matches_nav_up(key, &state.keymap) {
-                let prev = state.explorer.host.selected.saturating_sub(1);
-                return Some(AppEvent::ExplorerHostSelect(prev));
-            }
+    if key_matches_nav_down(key, &state.keymap) {
+        let next = (selected + 1).min(max);
+        return Some(if host_selected { AppEvent::ExplorerHostSelect(next) } else { AppEvent::ExplorerContainerSelect(next) });
+    }
+    if key_matches_nav_up(key, &state.keymap) {
+        let prev = selected.saturating_sub(1);
+        return Some(if host_selected { AppEvent::ExplorerHostSelect(prev) } else { AppEvent::ExplorerContainerSelect(prev) });
+    }
 
-            if code == KeyCode::PageDown {
-                let next = (state.explorer.host.selected + 20).min(max);
-                return Some(AppEvent::ExplorerHostSelect(next));
-            }
-            if code == KeyCode::PageUp {
-                let prev = state.explorer.host.selected.saturating_sub(20);
-                return Some(AppEvent::ExplorerHostSelect(prev));
-            }
+    if code == KeyCode::PageDown {
+        let next = (selected + 20).min(max);
+        return Some(if host_selected { AppEvent::ExplorerHostSelect(next) } else { AppEvent::ExplorerContainerSelect(next) });
+    }
+    if code == KeyCode::PageUp {
+        let prev = selected.saturating_sub(20);
+        return Some(if host_selected { AppEvent::ExplorerHostSelect(prev) } else { AppEvent::ExplorerContainerSelect(prev) });
+    }
 
-            // g - jump to top
-            if code == KeyCode::Char('g') && mods == KeyModifiers::NONE {
-                return Some(AppEvent::ExplorerHostSelect(0));
-            }
-            // G - jump to bottom
-            if code == KeyCode::Char('G') {
-                return Some(AppEvent::ExplorerHostSelect(max));
-            }
+    // g - jump to top
+    if code == KeyCode::Char('g') && mods == KeyModifiers::NONE {
+        return Some(if host_selected { AppEvent::ExplorerHostSelect(0) } else { AppEvent::ExplorerContainerSelect(0) });
+    }
+    // G - jump to bottom
+    if code == KeyCode::Char('G') {
+        return Some(if host_selected { AppEvent::ExplorerHostSelect(max) } else { AppEvent::ExplorerContainerSelect(max) });
+    }
 
-            // Enter - enter directory or go up (does NOT copy files)
-            if code == KeyCode::Enter {
-                if show_parent && state.explorer.host.selected == 0 {
-                    return Some(AppEvent::ExplorerHostGoUp);
-                }
-                let entry_idx = if show_parent { state.explorer.host.selected.saturating_sub(1) } else { state.explorer.host.selected };
-                if let Some(entry) = state.explorer.host.items.get(entry_idx) {
-                    if entry.is_dir {
-                        return Some(AppEvent::ExplorerHostEnterDir(entry.name.clone()));
-                    }
-                }
-            }
-            // r - rename
-            if code == KeyCode::Char('r') && mods == KeyModifiers::NONE {
-                if show_parent && state.explorer.host.selected == 0 {
-                    return None;
-                }
-                let entry_idx = if show_parent { state.explorer.host.selected.saturating_sub(1) } else { state.explorer.host.selected };
-                if state.explorer.host.items.get(entry_idx).is_some() {
-                    return Some(AppEvent::ExplorerHostActivateRename);
-                }
-            }
-            // R - refresh
-            if code == KeyCode::Char('R') {
-                return Some(AppEvent::ExplorerHostRefresh);
-            }
-            // / - filter
-            if code == KeyCode::Char('/') && mods == KeyModifiers::NONE {
-                return Some(AppEvent::ExplorerHostActivateFilter);
-            }
-            // Ctrl+C - copy from active panel to the other side
-            if code == KeyCode::Char('c') && mods == KeyModifiers::CONTROL {
-                return Some(AppEvent::ExplorerCopyToContainer);
-            }
-            // d - delete file/directory
-            if code == KeyCode::Char('d') && mods == KeyModifiers::NONE {
-                if show_parent && state.explorer.host.selected == 0 {
-                    return None;
-                }
-                let entry_idx = if show_parent { state.explorer.host.selected.saturating_sub(1) } else { state.explorer.host.selected };
-                if let Some(entry) = state.explorer.host.items.get(entry_idx) {
-                    let host_path = if state.explorer.host.path == "/" {
-                        format!("/{}", entry.name)
-                    } else {
-                        format!("{}/{}", state.explorer.host.path, entry.name)
-                    };
-                    return Some(AppEvent::ShowConfirmDialog(
-                        format!("Delete '{}'?", host_path),
-                        ConfirmAction::DeleteHostFile(host_path),
-                    ));
-                }
+    // Enter - enter directory or go up
+    if code == KeyCode::Enter {
+        if show_parent && selected == 0 {
+            return Some(if host_selected { AppEvent::ExplorerHostGoUp } else { AppEvent::ExplorerContainerGoUp });
+        }
+        let entry_idx = if show_parent { selected.saturating_sub(1) } else { selected };
+        if let Some(entry) = items.get(entry_idx) {
+            if entry.is_dir {
+                return Some(if host_selected { AppEvent::ExplorerHostEnterDir(entry.name.clone()) } else { AppEvent::ExplorerContainerEnterDir(entry.name.clone()) });
             }
         }
-        ExplorerFocus::Right => {
-            let show_parent = state.explorer.container.path != "/";
-            let max = max_selected(state.explorer.container.items.len(), show_parent);
-
-            if key_matches_nav_down(key, &state.keymap) {
-                let next = (state.explorer.container.selected + 1).min(max);
-                return Some(AppEvent::ExplorerContainerSelect(next));
-            }
-            if key_matches_nav_up(key, &state.keymap) {
-                let prev = state.explorer.container.selected.saturating_sub(1);
-                return Some(AppEvent::ExplorerContainerSelect(prev));
-            }
-
-            if code == KeyCode::PageDown {
-                let next = (state.explorer.container.selected + 20).min(max);
-                return Some(AppEvent::ExplorerContainerSelect(next));
-            }
-            if code == KeyCode::PageUp {
-                let prev = state.explorer.container.selected.saturating_sub(20);
-                return Some(AppEvent::ExplorerContainerSelect(prev));
-            }
-
-            // g - jump to top
-            if code == KeyCode::Char('g') && mods == KeyModifiers::NONE {
-                return Some(AppEvent::ExplorerContainerSelect(0));
-            }
-            // G - jump to bottom
-            if code == KeyCode::Char('G') {
-                return Some(AppEvent::ExplorerContainerSelect(max));
-            }
-
-            // Enter - enter directory or go up (does NOT copy files)
-            if code == KeyCode::Enter {
-                if show_parent && state.explorer.container.selected == 0 {
-                    return Some(AppEvent::ExplorerContainerGoUp);
-                }
-                let entry_idx = if show_parent { state.explorer.container.selected.saturating_sub(1) } else { state.explorer.container.selected };
-                if let Some(entry) = state.explorer.container.items.get(entry_idx) {
-                    if entry.is_dir {
-                        return Some(AppEvent::ExplorerContainerEnterDir(entry.name.clone()));
-                    }
-                }
-            }
-            // r - rename
-            if code == KeyCode::Char('r') && mods == KeyModifiers::NONE {
-                if show_parent && state.explorer.container.selected == 0 {
-                    return None;
-                }
-                let entry_idx = if show_parent { state.explorer.container.selected.saturating_sub(1) } else { state.explorer.container.selected };
-                if state.explorer.container.items.get(entry_idx).is_some() {
-                    return Some(AppEvent::ExplorerContainerActivateRename);
-                }
-            }
-            // R - refresh
-            if code == KeyCode::Char('R') {
-                return Some(AppEvent::ExplorerContainerRefresh);
-            }
-            // / - filter
-            if code == KeyCode::Char('/') && mods == KeyModifiers::NONE {
-                return Some(AppEvent::ExplorerContainerActivateFilter);
-            }
-            // Ctrl+C - copy from active panel to the other side
-            if code == KeyCode::Char('c') && mods == KeyModifiers::CONTROL {
-                return Some(AppEvent::ExplorerCopyFromContainer);
-            }
-            // d - delete file/directory
-            if code == KeyCode::Char('d') && mods == KeyModifiers::NONE {
-                if show_parent && state.explorer.container.selected == 0 {
-                    return None;
-                }
-                let entry_idx = if show_parent { state.explorer.container.selected.saturating_sub(1) } else { state.explorer.container.selected };
-                if let Some(entry) = state.explorer.container.items.get(entry_idx) {
-                    let container_path = if state.explorer.container.path == "/" || state.explorer.container.path.ends_with('/') {
-                        format!("{}{}", state.explorer.container.path, entry.name)
-                    } else {
-                        format!("{}/{}", state.explorer.container.path, entry.name)
-                    };
-                    return Some(AppEvent::ShowConfirmDialog(
-                        format!("Delete '{}'?", container_path),
-                        ConfirmAction::DeleteContainerFile(
-                            state.explorer.container_id.clone(),
-                            container_path,
-                        ),
-                    ));
-                }
+    }
+    // r - rename
+    if code == KeyCode::Char('r') && mods == KeyModifiers::NONE {
+        if show_parent && selected == 0 {
+            return None;
+        }
+        let entry_idx = if show_parent { selected.saturating_sub(1) } else { selected };
+        if items.get(entry_idx).is_some() {
+            return Some(if host_selected { AppEvent::ExplorerHostActivateRename } else { AppEvent::ExplorerContainerActivateRename });
+        }
+    }
+    // R - refresh
+    if code == KeyCode::Char('R') {
+        return Some(if host_selected { AppEvent::ExplorerHostRefresh } else { AppEvent::ExplorerContainerRefresh });
+    }
+    // / - filter
+    if code == KeyCode::Char('/') && mods == KeyModifiers::NONE {
+        return Some(if host_selected { AppEvent::ExplorerHostActivateFilter } else { AppEvent::ExplorerContainerActivateFilter });
+    }
+    // Ctrl+C - copy (only in non-volume mode)
+    if code == KeyCode::Char('c') && mods == KeyModifiers::CONTROL && !is_volume {
+        return Some(match state.explorer.focus {
+            ExplorerFocus::Left => AppEvent::ExplorerCopyToContainer,
+            ExplorerFocus::Right => AppEvent::ExplorerCopyFromContainer,
+        });
+    }
+    // d - delete file/directory
+    if code == KeyCode::Char('d') && mods == KeyModifiers::NONE {
+        if show_parent && selected == 0 {
+            return None;
+        }
+        let entry_idx = if show_parent { selected.saturating_sub(1) } else { selected };
+        if let Some(entry) = items.get(entry_idx) {
+            let full_path = if *path == "/" || path.is_empty() {
+                format!("/{}", entry.name)
+            } else {
+                format!("{}/{}", path, entry.name)
+            };
+            if host_selected {
+                return Some(AppEvent::ShowConfirmDialog(
+                    format!("Delete '{}'?", full_path),
+                    ConfirmAction::DeleteHostFile(full_path),
+                ));
+            } else {
+                return Some(AppEvent::ShowConfirmDialog(
+                    format!("Delete '{}'?", full_path),
+                    ConfirmAction::DeleteContainerFile(
+                        state.explorer.container_id.clone(),
+                        full_path,
+                    ),
+                ));
             }
         }
     }
