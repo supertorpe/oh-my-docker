@@ -68,6 +68,12 @@ fn scroll_state(state: &mut AppState, dir: i32) {
                 state.statistics.scroll_offset = new;
             }
         }
+        Mode::ContainerDetails(_) => {
+            if let Some(ref mut d) = state.navigation.details {
+                let new = (d.scroll_offset as i32 + dir).max(0) as usize;
+                d.scroll_offset = new;
+            }
+        }
         Mode::Help => {
             let new = (state.navigation.help.scroll_offset as i32 + dir).max(0) as usize;
             state.navigation.help.scroll_offset = new;
