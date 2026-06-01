@@ -234,6 +234,7 @@ pub enum AppEvent {
     ExplorerRenameCancel,
     ExplorerRenameSubmit,
     ExplorerHostDirUpdated(String, Vec<ExplorerEntry>),
+    ContainerWorkingDir(String, String),
 }
 
 #[derive(Clone, Debug)]
@@ -286,4 +287,5 @@ pub enum Command {
     DeleteContainerFile(String, String),
     RenameHostFile(String, String),
     RenameContainerFile(String, String, String),
+    FetchContainerWorkingDir(String),
 }

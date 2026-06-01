@@ -76,7 +76,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
         AppEvent::Navigate(mode @ Mode::Explorer(_)) => {
             if let Mode::Explorer(id) = &mode {
                 state.explorer.container_id = id.clone();
-                state.explorer.host.path = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+                state.explorer.host.path = std::env::current_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|_| ".".to_string());
                 state.explorer.host.items.clear();
                 state.explorer.host.selected = 0;
                 state.explorer.host.loading = true;
@@ -90,7 +90,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                 state.explorer.transfer_error_clear_tick = 0;
                 state.explorer.focus = crate::app::state::ExplorerFocus::Left;
                 commands.push(Command::ListHostDir(state.explorer.host.path.clone()));
-                commands.push(Command::ListContainerDir(id.clone(), state.explorer.container.path.clone()));
+                commands.push(Command::FetchContainerWorkingDir(id.clone()));
             }
             state.navigation.mode_stack.push(mode.clone());
         }

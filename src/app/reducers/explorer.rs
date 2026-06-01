@@ -275,6 +275,22 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             }
         }
 
+        AppEvent::ContainerWorkingDir(container_id, working_dir) => {
+            if state.explorer.container_id == *container_id {
+                let path = if working_dir.is_empty() || !working_dir.starts_with('/') {
+                    "/".to_string()
+                } else if working_dir.ends_with('/') {
+                    working_dir.clone()
+                } else {
+                    format!("{}/", working_dir)
+                };
+                state.explorer.container.path = path.clone();
+                state.explorer.container.selected = 0;
+                state.explorer.container.loading = true;
+                commands.push(Command::ListContainerDir(container_id.clone(), path));
+            }
+        }
+
         AppEvent::ExplorerHostDirUpdated(path, entries) => {
             if state.explorer.host.path == *path {
                 state.explorer.host.all_items = entries.clone();

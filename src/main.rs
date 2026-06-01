@@ -238,7 +238,7 @@ fn handle_commands(commands: Vec<Command>, docker: &Option<Docker>, tx: &mpsc::U
             Command::DownloadUpdate { version, download_url } => {
                 update::spawn_download_update(tx.clone(), version, download_url);
             }
-            Command::ListContainerDir(_, _) | Command::ListHostDir(_) | Command::CopyToContainer(_, _, _) | Command::CopyFromContainer(_, _, _) | Command::DeleteHostFile(_) | Command::DeleteContainerFile(_, _) | Command::RenameHostFile(_, _) | Command::RenameContainerFile(_, _, _) => {
+            Command::ListContainerDir(_, _) | Command::ListHostDir(_) | Command::CopyToContainer(_, _, _) | Command::CopyFromContainer(_, _, _) | Command::DeleteHostFile(_) | Command::DeleteContainerFile(_, _) | Command::RenameHostFile(_, _) | Command::RenameContainerFile(_, _, _) | Command::FetchContainerWorkingDir(_) => {
                 handle_explorer_commands(cmd, docker.as_ref().unwrap(), tx, state);
             }
             _ => {
@@ -397,6 +397,25 @@ fn handle_explorer_commands(
                     }
                     Err(e) => {
                         let _ = tx.send(app::event::AppEvent::ExplorerTransferError(format!("Rename failed: {}", e)));
+                    }
+                }
+            });
+        }
+        Command::FetchContainerWorkingDir(container_id) => {
+            let d = docker.clone();
+            let tx = tx.clone();
+            tokio::spawn(async move {
+                match docker::containers::inspect_container(&d, &container_id).await {
+                    Ok((json, _)) => {
+                        let wd = json
+                            .pointer("/Config/WorkingDir")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("/");
+                        let _ = tx.send(app::event::AppEvent::ContainerWorkingDir(container_id, wd.to_string()));
+                    }
+                    Err(e) => {
+                        let _ = tx.send(app::event::AppEvent::ContainerWorkingDir(container_id, "/".to_string()));
+                        let _ = tx.send(app::event::AppEvent::Error(format!("Inspect failed: {}", e)));
                     }
                 }
             });
