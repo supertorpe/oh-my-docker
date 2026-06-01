@@ -135,6 +135,26 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             state.images.sort_ascending = !state.images.sort_ascending;
             state.images.apply_sort();
         }
+        AppEvent::ToggleSelectionMode => {
+            state.images.selection_mode = !state.images.selection_mode;
+            if !state.images.selection_mode {
+                state.images.selected_ids.clear();
+            }
+        }
+        AppEvent::ToggleSelectResource(id) if state.images.selection_mode => {
+            if state.images.selected_ids.contains(id) {
+                state.images.selected_ids.remove(id);
+            } else {
+                state.images.selected_ids.insert(id.clone());
+            }
+        }
+        AppEvent::SelectAllResources if state.images.selection_mode => {
+            for &idx in &state.images.filtered {
+                if let Some(img) = state.images.items.get(idx) {
+                    state.images.selected_ids.insert(img.id.clone());
+                }
+            }
+        }
         AppEvent::ImageRunSubmit => {
             let mut errors: Vec<(usize, String)> = Vec::new();
             if let Some(ref run) = state.navigation.image_run {

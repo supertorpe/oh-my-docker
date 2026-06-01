@@ -17,7 +17,7 @@ fn shortcuts(mode: &Mode) -> &'static str {
             " j/k:scroll  PgUp/PgDn:page  g/G:top/bot  /:search  p:pause  T:timestamps  s:export  Esc:back "
         }
         Mode::Images => {
-            " ←/→:sort  ^T:direction  /:filter  r:run  d:delete  D:dangling  p:prune  Ctrl+U/D:page  g/G:top/bot "
+            " ←/→:sort  ^T:direction  /:filter  r:run  d:delete  D:dangling  p:prune  Ctrl+U/D:page  g/G:top/bot  Space:select "
         }
         Mode::ImageRun(_) => {
             " Tab/↓:next  ↑:prev  Enter:run  a:toggle  ^A:advanced  Esc:back "
@@ -35,10 +35,10 @@ fn shortcuts(mode: &Mode) -> &'static str {
             " ←/→:sort field  ^T:direction  Esc:back "
         }
         Mode::Networks => {
-            " ←/→:sort  ^T:direction  d:delete  Esc:back "
+            " ←/→:sort  ^T:direction  d:delete  Space:select  Esc:back "
         }
         Mode::Volumes => {
-            " ←/→:sort  ^T:direction  d:delete  Esc:back "
+            " ←/→:sort  ^T:direction  d:delete  Space:select  Esc:back "
         }
         Mode::Explorer(_) => {
             " Tab:focus  ↑/↓:nav  Enter:dir  Backspace:up  PgUp/PgDn:page  g/G:top/bot  /:filter  r:rename  R:refresh  d:delete  ^C:copy  Esc:back "

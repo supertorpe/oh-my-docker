@@ -387,7 +387,6 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                 | AppEvent::ContainerStarted(_)
                 | AppEvent::StartContainer(_)
                 | AppEvent::ContainerDeleted(_)
-                | AppEvent::ToggleSelectionMode
                 | AppEvent::ToggleSelectContainer(_)
                 | AppEvent::SelectAllContainers
                 | AppEvent::ToggleColumnPicker
@@ -441,6 +440,39 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                         Mode::Containers => {
                             commands.extend(crate::app::reducers::container::reduce(state, &event));
                         }
+                        Mode::Images => {
+                            commands.extend(crate::app::reducers::image::reduce(state, &event));
+                        }
+                        Mode::Networks => {
+                            commands.extend(crate::app::reducers::network::reduce(state, &event));
+                        }
+                        Mode::Volumes => {
+                            commands.extend(crate::app::reducers::volume::reduce(state, &event));
+                        }
+                        _ => {}
+                    }
+                }
+                AppEvent::ToggleSelectionMode => {
+                    use crate::app::mode::Mode;
+                    match state.navigation.mode_stack.current() {
+                        Mode::Containers => {
+                            commands.extend(crate::app::reducers::container::reduce(state, &event));
+                        }
+                        Mode::Images => {
+                            commands.extend(crate::app::reducers::image::reduce(state, &event));
+                        }
+                        Mode::Networks => {
+                            commands.extend(crate::app::reducers::network::reduce(state, &event));
+                        }
+                        Mode::Volumes => {
+                            commands.extend(crate::app::reducers::volume::reduce(state, &event));
+                        }
+                        _ => {}
+                    }
+                }
+                AppEvent::ToggleSelectResource(_) | AppEvent::SelectAllResources => {
+                    use crate::app::mode::Mode;
+                    match state.navigation.mode_stack.current() {
                         Mode::Images => {
                             commands.extend(crate::app::reducers::image::reduce(state, &event));
                         }

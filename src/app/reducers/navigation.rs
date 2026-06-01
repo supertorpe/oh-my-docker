@@ -174,6 +174,30 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                     ConfirmAction::PruneUnusedImages => commands.push(Command::PruneUnusedImages),
                     ConfirmAction::RemoveNetwork(id) => commands.push(Command::RemoveNetwork(id)),
                     ConfirmAction::RemoveVolume(name) => commands.push(Command::RemoveVolume(name)),
+                    ConfirmAction::BatchDeleteImages => {
+                        let ids: Vec<String> = state.images.selected_ids.iter().cloned().collect();
+                        state.images.selected_ids.clear();
+                        state.images.selection_mode = false;
+                        if !ids.is_empty() {
+                            commands.push(Command::BatchDeleteImages(ids));
+                        }
+                    }
+                    ConfirmAction::BatchDeleteNetworks => {
+                        let ids: Vec<String> = state.networks.selected_ids.iter().cloned().collect();
+                        state.networks.selected_ids.clear();
+                        state.networks.selection_mode = false;
+                        if !ids.is_empty() {
+                            commands.push(Command::BatchDeleteNetworks(ids));
+                        }
+                    }
+                    ConfirmAction::BatchDeleteVolumes => {
+                        let ids: Vec<String> = state.volumes.selected_ids.iter().cloned().collect();
+                        state.volumes.selected_ids.clear();
+                        state.volumes.selection_mode = false;
+                        if !ids.is_empty() {
+                            commands.push(Command::BatchDeleteVolumes(ids));
+                        }
+                    }
                     ConfirmAction::DeleteHostFile(path) => commands.push(Command::DeleteHostFile(path)),
                     ConfirmAction::DeleteContainerFile(id, path) => commands.push(Command::DeleteContainerFile(id, path)),
                 }

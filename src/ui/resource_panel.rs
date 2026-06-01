@@ -18,6 +18,7 @@ pub trait Resource: 'static {
     fn cell_value(item: &Self::Summary, col: usize) -> String;
     fn matches_filter(item: &Self::Summary, term: &str) -> bool;
     fn compare(item: &Self::Summary, other: &Self::Summary, col: usize) -> Ordering;
+    fn item_id(item: &Self::Summary) -> String;
 
     fn row_style(item: &Self::Summary, is_selected: bool) -> Style {
         let _ = item;
@@ -56,6 +57,8 @@ pub struct ResourceState<T: Resource> {
     pub column_picker_selection: usize,
     pub sort_column: usize,
     pub sort_ascending: bool,
+    pub selection_mode: bool,
+    pub selected_ids: std::collections::HashSet<String>,
 }
 
 impl<T: Resource> Default for ResourceState<T> {
@@ -73,6 +76,8 @@ impl<T: Resource> Default for ResourceState<T> {
             column_picker_selection: 0,
             sort_column: 0,
             sort_ascending: true,
+            selection_mode: false,
+            selected_ids: std::collections::HashSet::new(),
         }
     }
 }
@@ -238,19 +243,15 @@ pub fn render_simple_list<T: Resource>(
         crate::ui::staleness_indicator(state.last_updated, polling_interval_ms)
     };
 
-    let title = format!(
-        " {} {} ({}) ",
-        T::title(),
-        indicator_char,
-        if state.loading { "loading...".to_string() } else if !state.filter.is_empty() {
-            format!("{}/{}", state.filtered.len(), state.items.len())
-        } else {
-            state.filtered.len().to_string()
-        }
-    );
-    if !state.filter.is_empty() && !state.loading {
-        let _ = &format!("'{}'", state.filter);
-    }
+    let title = if state.loading {
+        format!(" {} {} (loading...) ", T::title(), indicator_char)
+    } else if !state.filter.is_empty() {
+        format!(" {} {} ({}/{}) FILTER '{}' ", T::title(), indicator_char, state.filtered.len(), state.items.len(), state.filter)
+    } else if state.selection_mode && !state.selected_ids.is_empty() {
+        format!(" {} {} ({}) [{}] ", T::title(), indicator_char, state.filtered.len(), state.selected_ids.len())
+    } else {
+        format!(" {} {} ({}) ", T::title(), indicator_char, state.filtered.len())
+    };
 
     let block = Block::default()
         .title(title)
@@ -309,14 +310,19 @@ pub fn render_simple_list<T: Resource>(
     let mut widths: Vec<Constraint> = Vec::new();
     let mut header_names: Vec<&str> = Vec::new();
 
+    if state.selection_mode {
+        widths.push(Constraint::Length(3));
+        header_names.push("");
+    }
     for (h, w) in T::column_headers() {
         widths.push(w);
         header_names.push(h);
     }
 
+    let sort_col = state.sort_column + if state.selection_mode { 1 } else { 0 };
     let header_cells: Vec<Cell> = header_names.iter().enumerate().map(|(i, h)| {
         let mut cell = Cell::from(*h).style(header_style);
-        if i == state.sort_column {
+        if i == sort_col && !h.is_empty() {
             let arrow = if state.sort_ascending { " \u{25b4}" } else { " \u{25be}" };
             cell = Cell::from(format!("{}{}", h, arrow)).style(header_style.fg(Color::Yellow));
         }
@@ -328,13 +334,19 @@ pub fn render_simple_list<T: Resource>(
     let rows: Vec<Row> = state.filtered.iter().map(|&idx| {
         let item = &state.items[idx];
         let is_selected = state.filtered.get(state.selected) == Some(&idx);
-        let indicator = if is_selected { "▶ " } else { "  " };
+        let indicator = if is_selected { "▶" } else { " " };
         let style = T::row_style(item, is_selected);
+        let item_id = T::item_id(item);
+        let is_id_selected = state.selected_ids.contains(&item_id);
 
         let mut cells: Vec<Cell> = Vec::new();
+        if state.selection_mode {
+            let check = if is_id_selected { "[x]" } else { "[ ]" };
+            cells.push(Cell::from(check));
+        }
         for col in 0..T::column_headers().len() {
             let val = if col == 0 {
-                format!("{}{}", indicator, T::cell_value(item, col))
+                format!("{} {}", indicator, T::cell_value(item, col))
             } else {
                 T::cell_value(item, col)
             };
@@ -409,6 +421,9 @@ impl Resource for ContainerResource {
     }
     fn column_picker_labels() -> Vec<&'static str> {
         vec!["Name", "Image", "State", "Ports"]
+    }
+    fn item_id(item: &Self::Summary) -> String {
+        item.id.clone()
     }
     fn empty_hint() -> &'static str {
         "  r  run an image  /  search containers  Space  select mode"
@@ -730,6 +745,9 @@ impl Resource for ImageResource {
     fn column_picker_labels() -> Vec<&'static str> {
         vec!["Repository", "Tag", "Size", "ID"]
     }
+    fn item_id(item: &Self::Summary) -> String {
+        item.id.clone()
+    }
     fn empty_hint() -> &'static str {
         "  Esc  back"
     }
@@ -769,6 +787,9 @@ impl Resource for VolumeResource {
     }
     fn column_picker_labels() -> Vec<&'static str> {
         vec!["Name", "Driver", "Mountpoint"]
+    }
+    fn item_id(item: &Self::Summary) -> String {
+        item.name.clone()
     }
     fn empty_hint() -> &'static str {
         "  Esc  back"
@@ -823,6 +844,9 @@ impl Resource for NetworkResource {
     }
     fn column_picker_labels() -> Vec<&'static str> {
         vec!["Name", "ID", "Driver", "Scope", "IPAM"]
+    }
+    fn item_id(item: &Self::Summary) -> String {
+        item.id.clone()
     }
     fn empty_hint() -> &'static str {
         "  Esc  back"

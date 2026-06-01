@@ -17,6 +17,26 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
         AppEvent::ToggleColumnPicker => {
             state.networks.show_column_picker = !state.networks.show_column_picker;
         }
+        AppEvent::ToggleSelectionMode => {
+            state.networks.selection_mode = !state.networks.selection_mode;
+            if !state.networks.selection_mode {
+                state.networks.selected_ids.clear();
+            }
+        }
+        AppEvent::ToggleSelectResource(id) if state.networks.selection_mode => {
+            if state.networks.selected_ids.contains(id) {
+                state.networks.selected_ids.remove(id);
+            } else {
+                state.networks.selected_ids.insert(id.clone());
+            }
+        }
+        AppEvent::SelectAllResources if state.networks.selection_mode => {
+            for &idx in &state.networks.filtered {
+                if let Some(n) = state.networks.items.get(idx) {
+                    state.networks.selected_ids.insert(n.id.clone());
+                }
+            }
+        }
         AppEvent::ToggleColumn(name) => {
             if state.networks.show_column_picker {
                 let col_count = 5;

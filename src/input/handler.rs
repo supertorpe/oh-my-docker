@@ -74,8 +74,12 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     }
 
     if km.is_back(code, mods) && !in_input_mode {
-        if state.container_extra.selection_mode {
-            // Let Esc pass through to the container handler which exits selection mode
+        if state.container_extra.selection_mode
+            || state.images.selection_mode
+            || state.networks.selection_mode
+            || state.volumes.selection_mode
+        {
+            // Let Esc pass through to the mode-specific handler which exits selection mode
         } else if *state.navigation.mode_stack.current() == Mode::Help && state.navigation.mode_stack.len() > 1 {
             return Some(AppEvent::Back);
         } else if *state.navigation.mode_stack.current() == Mode::Help {

@@ -186,6 +186,72 @@ pub fn spawn_create_container(docker: Docker, tx: UnboundedSender<AppEvent>, opt
     });
 }
 
+pub fn spawn_batch_delete_images(docker: Docker, tx: UnboundedSender<AppEvent>, ids: Vec<String>) {
+    tokio::spawn(async move {
+        let total = ids.len();
+        let handles: Vec<_> = ids.into_iter().map(|id| {
+            let docker = docker.clone();
+            let tx = tx.clone();
+            tokio::spawn(async move {
+                match docker::images::remove_image(&docker, &id).await {
+                    Ok(()) => true,
+                    Err(e) => {
+                        let _ = tx.send(AppEvent::Error(format!("Remove image failed: {}", e)));
+                        false
+                    }
+                }
+            })
+        }).collect();
+        let results = futures_util::future::join_all(handles).await;
+        let deleted = results.iter().filter_map(|r| r.as_ref().ok()).filter(|&&s| s).count();
+        let _ = tx.send(AppEvent::Info(format!("Removed {}/{} images", deleted, total)));
+    });
+}
+
+pub fn spawn_batch_delete_networks(docker: Docker, tx: UnboundedSender<AppEvent>, ids: Vec<String>) {
+    tokio::spawn(async move {
+        let total = ids.len();
+        let handles: Vec<_> = ids.into_iter().map(|id| {
+            let docker = docker.clone();
+            let tx = tx.clone();
+            tokio::spawn(async move {
+                match docker::networks::remove_network(&docker, &id).await {
+                    Ok(()) => true,
+                    Err(e) => {
+                        let _ = tx.send(AppEvent::Error(format!("Remove network failed: {}", e)));
+                        false
+                    }
+                }
+            })
+        }).collect();
+        let results = futures_util::future::join_all(handles).await;
+        let deleted = results.iter().filter_map(|r| r.as_ref().ok()).filter(|&&s| s).count();
+        let _ = tx.send(AppEvent::Info(format!("Removed {}/{} networks", deleted, total)));
+    });
+}
+
+pub fn spawn_batch_delete_volumes(docker: Docker, tx: UnboundedSender<AppEvent>, ids: Vec<String>) {
+    tokio::spawn(async move {
+        let total = ids.len();
+        let handles: Vec<_> = ids.into_iter().map(|id| {
+            let docker = docker.clone();
+            let tx = tx.clone();
+            tokio::spawn(async move {
+                match docker::volumes::remove_volume(&docker, &id).await {
+                    Ok(()) => true,
+                    Err(e) => {
+                        let _ = tx.send(AppEvent::Error(format!("Remove volume failed: {}", e)));
+                        false
+                    }
+                }
+            })
+        }).collect();
+        let results = futures_util::future::join_all(handles).await;
+        let deleted = results.iter().filter_map(|r| r.as_ref().ok()).filter(|&&s| s).count();
+        let _ = tx.send(AppEvent::Info(format!("Removed {}/{} volumes", deleted, total)));
+    });
+}
+
 pub fn spawn_remove_network(docker: Docker, tx: UnboundedSender<AppEvent>, id: String) {
     tokio::spawn(async move {
         match docker::networks::remove_network(&docker, &id).await {

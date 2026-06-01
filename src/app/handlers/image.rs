@@ -64,12 +64,29 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
                 .map(|img| AppEvent::RunImage(img.repository.clone(), img.tag.clone()));
         }
         if km.is_remove_image(code, mods) {
-            return state.images.filtered.get(state.images.selected)
-                .and_then(|&idx| state.images.items.get(idx))
-                .map(|img| AppEvent::ShowConfirmDialog(
-                    format!("Remove image '{}:{}'?", img.repository, img.tag),
-                    ConfirmAction::RemoveImage(img.id.clone()),
-                ));
+            if state.images.selection_mode {
+                let ids: Vec<String> = state.images.selected_ids.iter().cloned().collect();
+                if ids.is_empty() {
+                    return state.images.filtered.get(state.images.selected)
+                        .and_then(|&idx| state.images.items.get(idx))
+                        .map(|img| AppEvent::ShowConfirmDialog(
+                            format!("Remove image '{}:{}'?", img.repository, img.tag),
+                            ConfirmAction::RemoveImage(img.id.clone()),
+                        ));
+                } else {
+                    return Some(AppEvent::ShowConfirmDialog(
+                        format!("Remove {} selected image(s)?", ids.len()),
+                        ConfirmAction::BatchDeleteImages,
+                    ));
+                }
+            } else {
+                return state.images.filtered.get(state.images.selected)
+                    .and_then(|&idx| state.images.items.get(idx))
+                    .map(|img| AppEvent::ShowConfirmDialog(
+                        format!("Remove image '{}:{}'?", img.repository, img.tag),
+                        ConfirmAction::RemoveImage(img.id.clone()),
+                    ));
+            }
         }
         if km.is_remove_dangling_images(code, mods) {
             return Some(AppEvent::ShowConfirmDialog(
@@ -96,8 +113,30 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
             let next = ((state.images.sort_column as i32 + 1).rem_euclid(n as i32)) as usize;
             return Some(AppEvent::SortByColumn(next));
         }
+        if km.is_toggle_selection(code, mods) {
+            if !state.images.selection_mode {
+                return Some(AppEvent::ToggleSelectionMode);
+            } else {
+                return state.images.filtered.get(state.images.selected)
+                    .and_then(|&idx| state.images.items.get(idx))
+                    .map(|img| AppEvent::ToggleSelectResource(img.id.clone()));
+            }
+        }
+        if km.is_select_all(code, mods) {
+            if state.images.selection_mode {
+                return Some(AppEvent::SelectAllResources);
+            } else {
+                return None;
+            }
+        }
         if km.is_search(code, mods) {
             return Some(AppEvent::ActivateImageFilter);
+        }
+        if code == KeyCode::Esc {
+            if state.images.selection_mode {
+                return Some(AppEvent::ToggleSelectionMode);
+            }
+            return None;
         }
         None
     }

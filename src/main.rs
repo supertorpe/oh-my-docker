@@ -257,6 +257,9 @@ fn handle_commands(commands: Vec<Command>, docker: &Option<Docker>, tx: &mpsc::U
                     Command::PruneUnusedImages => tasks::spawn_prune_unused_images(d.clone(), tx.clone()),
                     Command::BatchToggleContainers(ids) => tasks::spawn_batch_toggle_containers(d.clone(), tx.clone(), ids),
                     Command::BatchDeleteContainers(ids) => tasks::spawn_batch_delete_containers(d.clone(), tx.clone(), ids),
+                    Command::BatchDeleteImages(ids) => tasks::spawn_batch_delete_images(d.clone(), tx.clone(), ids),
+                    Command::BatchDeleteNetworks(ids) => tasks::spawn_batch_delete_networks(d.clone(), tx.clone(), ids),
+                    Command::BatchDeleteVolumes(ids) => tasks::spawn_batch_delete_volumes(d.clone(), tx.clone(), ids),
                     Command::CreateContainer(opts) => {
                         tasks::spawn_create_container(d.clone(), tx.clone(), opts);
                     }

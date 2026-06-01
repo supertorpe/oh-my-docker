@@ -38,6 +38,9 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         let mods = key.modifiers;
 
         if code == KeyCode::Esc {
+            if state.volumes.selection_mode {
+                return Some(AppEvent::ToggleSelectionMode);
+            }
             return Some(AppEvent::Back);
         }
         if km.is_navigate_down(code, mods) || code == KeyCode::Down {
@@ -61,12 +64,46 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
             let next = ((state.volumes.sort_column as i32 + 1).rem_euclid(n as i32)) as usize;
             return Some(AppEvent::SortByColumn(next));
         }
+        if km.is_toggle_selection(code, mods) {
+            if !state.volumes.selection_mode {
+                return Some(AppEvent::ToggleSelectionMode);
+            } else {
+                return state.volumes.filtered.get(state.volumes.selected)
+                    .and_then(|&idx| state.volumes.items.get(idx))
+                    .map(|v| AppEvent::ToggleSelectResource(v.name.clone()));
+            }
+        }
+        if km.is_select_all(code, mods) {
+            if state.volumes.selection_mode {
+                return Some(AppEvent::SelectAllResources);
+            } else {
+                return None;
+            }
+        }
         if km.is_delete(code, mods) {
-            return state.volumes.items.get(state.volumes.selected)
-                .map(|v| AppEvent::ShowConfirmDialog(
-                    format!("Remove volume '{}'?", v.name),
-                    ConfirmAction::RemoveVolume(v.name.clone()),
-                ));
+            if state.volumes.selection_mode {
+                let ids: Vec<String> = state.volumes.selected_ids.iter().cloned().collect();
+                if ids.is_empty() {
+                    return state.volumes.filtered.get(state.volumes.selected)
+                        .and_then(|&idx| state.volumes.items.get(idx))
+                        .map(|v| AppEvent::ShowConfirmDialog(
+                            format!("Remove volume '{}'?", v.name),
+                            ConfirmAction::RemoveVolume(v.name.clone()),
+                        ));
+                } else {
+                    return Some(AppEvent::ShowConfirmDialog(
+                        format!("Remove {} selected volume(s)?", ids.len()),
+                        ConfirmAction::BatchDeleteVolumes,
+                    ));
+                }
+            } else {
+                return state.volumes.filtered.get(state.volumes.selected)
+                    .and_then(|&idx| state.volumes.items.get(idx))
+                    .map(|v| AppEvent::ShowConfirmDialog(
+                        format!("Remove volume '{}'?", v.name),
+                        ConfirmAction::RemoveVolume(v.name.clone()),
+                    ));
+            }
         }
         None
     }
