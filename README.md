@@ -401,6 +401,14 @@ with severity-aware color coding.
 | `ureq` | HTTP client for self-update (GitHub release API) |
 | `curl` (CLI) | HTTP client for LLM API calls (diagnostics feature) |
 
+## Building with guix
+
+[You must have guix package management setup.](https://guix.gnu.org/manual/1.5.0/en/html_node/Package-Management.html)
+enter the git repository root.
+Build the guile scheme recipe like:
+`guix build --file=omdocker.scm`
+
+
 ## License
 
 MIT
