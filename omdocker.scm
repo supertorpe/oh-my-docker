@@ -882,7 +882,7 @@
 (define-public omdocker
   (package
    (name "omdocker")
-   (version "0.7.1")
+   (version "0.8.0")
 
    (source
     (origin
@@ -893,7 +893,7 @@
      (file-name (git-file-name name version))
      (sha256
       (base32
-       "05xkqki1j64mlj8flhjap4hm58qsz4r0c28h8yv57rqdsyalqpjn" ))))
+       "1im057d0zq1nzx8rpb08vancy08abq2gqdm0ywfmav54l8gb954x"))))
    (build-system cargo-build-system)
 
    (inputs
