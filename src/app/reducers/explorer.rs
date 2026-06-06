@@ -53,6 +53,90 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
     let mut commands = Vec::new();
 
     match event {
+        AppEvent::ExplorerHostToggleSelect => {
+            let panel = &mut state.explorer.host;
+            let show_parent = panel.path != "/";
+            let entry_idx = if show_parent { panel.selected.saturating_sub(1) } else { panel.selected };
+            if let Some(entry) = panel.items.get(entry_idx) {
+                if panel.selected_names.contains(&entry.name) {
+                    panel.selected_names.remove(&entry.name);
+                } else {
+                    panel.selected_names.insert(entry.name.clone());
+                }
+            }
+        }
+        AppEvent::ExplorerContainerToggleSelect => {
+            let panel = &mut state.explorer.container;
+            let show_parent = panel.path != "/";
+            let entry_idx = if show_parent { panel.selected.saturating_sub(1) } else { panel.selected };
+            if let Some(entry) = panel.items.get(entry_idx) {
+                if panel.selected_names.contains(&entry.name) {
+                    panel.selected_names.remove(&entry.name);
+                } else {
+                    panel.selected_names.insert(entry.name.clone());
+                }
+            }
+        }
+        AppEvent::ExplorerCopySelected => {
+            let host_sel = &state.explorer.host.selected_names;
+            let container_sel = &state.explorer.container.selected_names;
+            let sel = if !host_sel.is_empty() { &state.explorer.host } else if !container_sel.is_empty() { &state.explorer.container } else { return commands; };
+            let is_host = !host_sel.is_empty();
+            for name in &sel.selected_names {
+                let full_path = if sel.path == "/" || sel.path.is_empty() {
+                    format!("/{}", name)
+                } else {
+                    let p = sel.path.strip_suffix('/').unwrap_or(&sel.path);
+                    format!("{}/{}", p, name)
+                };
+                if is_host {
+                    let container_dest = if state.explorer.container.path.ends_with('/') {
+                        state.explorer.container.path.clone()
+                    } else {
+                        format!("{}/", state.explorer.container.path)
+                    };
+                    commands.push(Command::CopyToContainer(
+                        state.explorer.container_id.clone(),
+                        full_path,
+                        container_dest,
+                    ));
+                } else {
+                    let host_dest = state.explorer.host.path.clone();
+                    commands.push(Command::CopyFromContainer(
+                        state.explorer.container_id.clone(),
+                        full_path,
+                        host_dest,
+                    ));
+                }
+            }
+        }
+        AppEvent::ExplorerDeleteSelected => {
+            let host_sel = &state.explorer.host.selected_names;
+            let container_sel = &state.explorer.container.selected_names;
+            if !host_sel.is_empty() {
+                let path = &state.explorer.host.path;
+                for name in host_sel {
+                    let full_path = if path == "/" || path.is_empty() {
+                        format!("/{}", name)
+                    } else {
+                        format!("{}/{}", path, name)
+                    };
+                    commands.push(Command::DeleteHostFile(full_path));
+                }
+            } else if !container_sel.is_empty() {
+                let path = &state.explorer.container.path;
+                let cid = &state.explorer.container_id;
+                for name in container_sel {
+                    let full_path = if path == "/" || path.is_empty() {
+                        format!("/{}", name)
+                    } else {
+                        let p = path.strip_suffix('/').unwrap_or(path);
+                        format!("{}/{}", p, name)
+                    };
+                    commands.push(Command::DeleteContainerFile(cid.clone(), full_path));
+                }
+            }
+        }
         AppEvent::ExplorerSelect => {
             state.explorer.focus = match state.explorer.focus {
                 crate::app::state::ExplorerFocus::Left => crate::app::state::ExplorerFocus::Right,

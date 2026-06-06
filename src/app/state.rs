@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::collections::VecDeque;
 use std::time::Instant;
 use tokio::task::AbortHandle;
@@ -199,6 +199,7 @@ pub struct ExplorerPanel {
     pub goto_buffer: String,
     pub create_active: bool,
     pub create_buffer: String,
+    pub selected_names: HashSet<String>,
     pub loading: bool,
 }
 
@@ -218,6 +219,7 @@ impl Default for ExplorerPanel {
             goto_buffer: String::new(),
             create_active: false,
             create_buffer: String::new(),
+            selected_names: HashSet::new(),
             loading: true,
         }
     }

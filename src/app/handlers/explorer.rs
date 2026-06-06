@@ -111,11 +111,21 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     if code == KeyCode::Char('/') && mods == KeyModifiers::NONE {
         return Some(if host_selected { AppEvent::ExplorerHostActivateFilter } else { AppEvent::ExplorerContainerActivateFilter });
     }
+    // Shift+X - copy selected items
+    if code == KeyCode::Char('X') {
+        return Some(AppEvent::ExplorerCopySelected);
+    }
     if code == KeyCode::Char('c') && mods == KeyModifiers::CONTROL {
         return Some(match state.explorer.focus {
             ExplorerFocus::Left => AppEvent::ExplorerCopyToContainer,
             ExplorerFocus::Right => AppEvent::ExplorerCopyFromContainer,
         });
+    }
+    // Space - toggle selection
+    if code == KeyCode::Char(' ') && mods == KeyModifiers::NONE
+        && (!show_parent || selected > 0)
+    {
+        return Some(if host_selected { AppEvent::ExplorerHostToggleSelect } else { AppEvent::ExplorerContainerToggleSelect });
     }
     // ^P - go to path
     if code == KeyCode::Char('p') && mods == KeyModifiers::CONTROL {
@@ -123,6 +133,10 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
             ExplorerFocus::Left => AppEvent::ExplorerHostActivateGoto,
             ExplorerFocus::Right => AppEvent::ExplorerContainerActivateGoto,
         });
+    }
+    // D - batch delete selected
+    if code == KeyCode::Char('D') {
+        return Some(AppEvent::ExplorerDeleteSelected);
     }
     // d - delete file/directory
     if code == KeyCode::Char('d') && mods == KeyModifiers::NONE {

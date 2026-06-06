@@ -235,22 +235,25 @@ fn render_panel(
         let show_cursor = is_focused && panel.selected == item_idx;
         let indicator = if show_cursor { "\u{25B6}" } else { " " };
         let icon = if entry.is_dir { "\u{1F4C1}" } else { "\u{1F4C4}" };
+        let sel_mark = if panel.selected_names.contains(&entry.name) { "\u{2713}" } else { " " };
 
         let style = if show_cursor {
             Style::default().fg(Color::White).bg(Color::Blue)
+        } else if panel.selected_names.contains(&entry.name) {
+            Style::default().fg(Color::Yellow)
         } else {
             Style::default()
         };
 
         let cell = if wide {
             Cell::from(format!(
-                " {} {} {:>8} {}  {}",
-                indicator, entry.permissions, entry.size_str(), entry.modified, entry.name
+                " {} {} {:>8} {} {} {}",
+                indicator, entry.permissions, entry.size_str(), entry.modified, sel_mark, entry.name
             ))
         } else {
             Cell::from(format!(
-                " {} {} {}",
-                indicator, icon, entry.name
+                " {} {}{} {}",
+                indicator, sel_mark, icon, entry.name
             ))
         };
 

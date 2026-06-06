@@ -249,6 +249,10 @@ pub enum AppEvent {
     ExplorerCreateUpdate(String),
     ExplorerCreateSubmit,
     ExplorerCreateCancel,
+    ExplorerHostToggleSelect,
+    ExplorerContainerToggleSelect,
+    ExplorerCopySelected,
+    ExplorerDeleteSelected,
     ExplorerHostDirUpdated(String, Vec<ExplorerEntry>),
     ContainerWorkingDir(String, String),
 
