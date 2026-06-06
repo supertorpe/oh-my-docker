@@ -251,8 +251,8 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                         let mx = menu.x.min(state.term_width.saturating_sub(menu_w));
                         let my = menu.y.min(area_h.saturating_sub(menu_h));
                         let inside = *col >= mx && *col < mx + menu_w && *row >= my && *row < my + menu_h;
-                        if inside && matches!(kind, MouseClickKind::Left) && *row >= my + 2 {
-                            let item_idx = (*row - my - 2) as usize;
+                        if inside && matches!(kind, MouseClickKind::Left) && *row >= my + 1 {
+                            let item_idx = (*row - my - 1) as usize;
                             if item_idx < menu.items.len() {
                                 state.explorer.context_menu.as_mut().unwrap().selected = item_idx;
                                 let select_event = AppEvent::ExplorerContextMenuAction("select".into());
