@@ -531,6 +531,12 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                                         action: "preview".into(),
                                     });
                                 }
+                                if entry_is_dir {
+                                    items.push(crate::app::state::ContextMenuItem {
+                                        label: "Enter directory".into(),
+                                        action: "enter_dir".into(),
+                                    });
+                                }
                                 items.push(crate::app::state::ContextMenuItem {
                                     label: "Rename".into(),
                                     action: "rename".into(),
@@ -544,12 +550,22 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                                     label: "Copy to host".into(),
                                     action: "copy_from_container".into(),
                                 });
+                                if !entry_is_dir {
+                                    items.push(crate::app::state::ContextMenuItem {
+                                        label: "Preview".into(),
+                                        action: "preview".into(),
+                                    });
+                                }
                                 if entry_is_dir {
                                     items.push(crate::app::state::ContextMenuItem {
                                         label: "Enter directory".into(),
                                         action: "enter_dir".into(),
                                     });
                                 }
+                                items.push(crate::app::state::ContextMenuItem {
+                                    label: "Rename".into(),
+                                    action: "rename".into(),
+                                });
                                 items.push(crate::app::state::ContextMenuItem {
                                     label: "Delete".into(),
                                     action: "delete".into(),

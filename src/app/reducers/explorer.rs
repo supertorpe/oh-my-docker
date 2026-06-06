@@ -640,6 +640,8 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                                 "rename" => {
                                     if is_host {
                                         commands.extend(crate::app::reducers::explorer::reduce(state, &AppEvent::ExplorerHostActivateRename));
+                                    } else {
+                                        commands.extend(crate::app::reducers::explorer::reduce(state, &AppEvent::ExplorerContainerActivateRename));
                                     }
                                 }
                                 "delete" => {
