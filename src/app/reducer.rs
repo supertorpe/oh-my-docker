@@ -365,7 +365,7 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                         let p = if is_host { &state.explorer.host } else { &state.explorer.container };
                         show_parent = p.path != "/";
                         scroll_off = p.scroll_offset;
-                        all_len = p.all_items.len();
+                        all_len = p.items.len();
                     }
                     let visual_row = row.saturating_sub(2) as usize;
                     let table_row = scroll_off + visual_row;
@@ -424,7 +424,7 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                             let entry_is_dir;
                             {
                                 let p = if is_host { &state.explorer.host } else { &state.explorer.container };
-                                let entry = &p.all_items[item_idx];
+                                let entry = &p.items[item_idx];
                                 entry_name = entry.name.clone();
                                 entry_is_dir = entry.is_dir;
                             }
@@ -501,7 +501,7 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                         let p = if is_host { &state.explorer.host } else { &state.explorer.container };
                         show_parent = p.path != "/";
                         scroll_off = p.scroll_offset;
-                        all_len = p.all_items.len();
+                        all_len = p.items.len();
                     }
                     let visual_row = row.saturating_sub(2) as usize;
                     let table_row = scroll_off + visual_row;
@@ -511,7 +511,7 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                             let entry_is_dir;
                             {
                                 let p = if is_host { &state.explorer.host } else { &state.explorer.container };
-                                entry_is_dir = p.all_items[item_idx].is_dir;
+                                entry_is_dir = p.items[item_idx].is_dir;
                             }
                             // Select the clicked file before showing the menu
                             if is_host {

@@ -624,7 +624,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                                     commands.extend(crate::app::reducers::explorer::reduce(state, &AppEvent::ExplorerCopyFromContainer));
                                 }
                                 "preview" => {
-                                    if let Some(entry) = panel.all_items.get(item_idx) {
+                                    if let Some(entry) = panel.items.get(item_idx) {
                                         let path = if panel.path == "/" {
                                             format!("/{}", entry.name)
                                         } else {
@@ -645,13 +645,13 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                                     }
                                 }
                                 "delete" => {
-                                    if let Some(entry) = panel.all_items.get(item_idx) {
+                                    if let Some(entry) = panel.items.get(item_idx) {
                                         panel.selected_names.insert(entry.name.clone());
                                         commands.extend(crate::app::reducers::explorer::reduce(state, &AppEvent::ExplorerDeleteSelected));
                                     }
                                 }
                                 "enter_dir" => {
-                                    if let Some(entry) = panel.all_items.get(item_idx) {
+                                    if let Some(entry) = panel.items.get(item_idx) {
                                         let path = if panel.path.ends_with('/') {
                                             format!("{}{}", panel.path, entry.name)
                                         } else {
