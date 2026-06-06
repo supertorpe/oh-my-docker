@@ -480,14 +480,22 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                     let all_len = p.all_items.len();
                     if table_row > 0 && table_row <= all_len {
                         let item_idx = table_row - 1;
-                        if let Some(entry) = p.all_items.get(item_idx) {
+                        let entry_name = p.all_items.get(item_idx).map(|e| e.name.clone());
+                        let entry_is_dir = p.all_items.get(item_idx).map(|e| e.is_dir).unwrap_or(false);
+                        // Select the clicked file before showing the menu
+                        if is_host {
+                            state.explorer.host.selected = table_row;
+                        } else {
+                            state.explorer.container.selected = table_row;
+                        }
+                        if entry_name.is_some() {
                             let mut items = Vec::new();
                             if is_host {
                                 items.push(crate::app::state::ContextMenuItem {
                                     label: "Copy to container".into(),
                                     action: "copy_to_container".into(),
                                 });
-                                if !entry.is_dir {
+                                if !entry_is_dir {
                                     items.push(crate::app::state::ContextMenuItem {
                                         label: "Preview".into(),
                                         action: "preview".into(),
@@ -506,7 +514,7 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                                     label: "Copy to host".into(),
                                     action: "copy_from_container".into(),
                                 });
-                                if entry.is_dir {
+                                if entry_is_dir {
                                     items.push(crate::app::state::ContextMenuItem {
                                         label: "Enter directory".into(),
                                         action: "enter_dir".into(),
