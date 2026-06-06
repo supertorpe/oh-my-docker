@@ -84,6 +84,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                 state.explorer.container.items.clear();
                 state.explorer.container.selected = 0;
                 state.explorer.container.loading = true;
+                state.explorer.transfer_in_progress = false;
                 state.explorer.transfer_message = None;
                 state.explorer.transfer_error = None;
                 state.explorer.transfer_message_clear_tick = 0;
@@ -109,6 +110,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                 state.explorer.container.items.clear();
                 state.explorer.container.selected = 0;
                 state.explorer.container.loading = true;
+                state.explorer.transfer_in_progress = false;
                 state.explorer.transfer_message = None;
                 state.explorer.transfer_error = None;
                 state.explorer.transfer_message_clear_tick = 0;

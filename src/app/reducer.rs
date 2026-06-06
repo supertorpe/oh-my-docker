@@ -192,6 +192,7 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                 && state.tick_count >= state.explorer.transfer_message_clear_tick
             {
                 state.explorer.transfer_message = None;
+                state.explorer.transfer_in_progress = false;
             }
             if state.explorer.transfer_error.is_some()
                 && state.tick_count >= state.explorer.transfer_error_clear_tick

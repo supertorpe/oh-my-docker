@@ -525,6 +525,9 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                     } else {
                         format!("{}/", state.explorer.container.path)
                     };
+                    state.explorer.transfer_in_progress = true;
+                    state.explorer.transfer_message = Some(format!("Copying {}...", entry.name));
+                    state.explorer.transfer_error = None;
                     commands.push(Command::CopyToContainer(
                         state.explorer.container_id.clone(),
                         host_path,
@@ -543,6 +546,9 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                         format!("{}/{}", state.explorer.container.path, entry.name)
                     };
                     let host_dest = state.explorer.host.path.clone();
+                    state.explorer.transfer_in_progress = true;
+                    state.explorer.transfer_message = Some(format!("Copying {}...", entry.name));
+                    state.explorer.transfer_error = None;
                     commands.push(Command::CopyFromContainer(
                         state.explorer.container_id.clone(),
                         container_src,
@@ -553,6 +559,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
         }
 
         AppEvent::ExplorerTransferComplete(msg) => {
+            state.explorer.transfer_in_progress = false;
             state.explorer.transfer_message = Some(msg.clone());
             state.explorer.transfer_error = None;
             state.explorer.transfer_message_clear_tick = state.tick_count + 2;
@@ -564,6 +571,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
         }
 
         AppEvent::ExplorerTransferError(msg) => {
+            state.explorer.transfer_in_progress = false;
             state.explorer.transfer_error = Some(msg.clone());
             state.explorer.transfer_message = None;
             state.explorer.transfer_error_clear_tick = state.tick_count + 2;

@@ -63,26 +63,27 @@ pub fn render(frame: &mut Frame, area: Rect, state: &mut AppState) {
     }
 
     let toast_y = area.y + main_area.height;
+    let toast_area = Rect {
+        x: area.x,
+        y: toast_y,
+        width: area.width,
+        height: 1,
+    };
     if let Some(ref msg) = state.explorer.transfer_message {
-        let toast_area = Rect {
-            x: area.x,
-            y: toast_y,
-            width: area.width,
-            height: 1,
+        let spinner = if state.explorer.transfer_in_progress {
+            let phase = state.tick_count % 4;
+            ["  \u{258f}", "  \u{258e}", "  \u{258d}", "  \u{258b}"][phase as usize]
+        } else {
+            "  "
         };
-        frame.render_widget(
-            Paragraph::new(msg.clone()).style(Style::default().fg(Color::Black).bg(Color::Green)),
-            toast_area,
-        );
+        let fg = if state.explorer.transfer_in_progress { Color::Yellow } else { Color::Green };
+        let text = format!("{}{}", spinner, msg);
+        let paragraph = Paragraph::new(Line::from(Span::styled(text, Style::default().fg(fg))))
+            .alignment(Alignment::Left);
+        frame.render_widget(paragraph, toast_area);
     }
 
     if let Some(ref err) = state.explorer.transfer_error {
-        let toast_area = Rect {
-            x: area.x,
-            y: toast_y,
-            width: area.width,
-            height: 1,
-        };
         frame.render_widget(
             Paragraph::new(err.clone()).style(Style::default().fg(Color::Black).bg(Color::Red)),
             toast_area,
