@@ -239,6 +239,11 @@ pub enum AppEvent {
     ExplorerRenameUpdate(String),
     ExplorerRenameCancel,
     ExplorerRenameSubmit,
+    ExplorerHostActivateGoto,
+    ExplorerContainerActivateGoto,
+    ExplorerGotoUpdate(String),
+    ExplorerGotoSubmit,
+    ExplorerGotoCancel,
     ExplorerHostDirUpdated(String, Vec<ExplorerEntry>),
     ContainerWorkingDir(String, String),
 

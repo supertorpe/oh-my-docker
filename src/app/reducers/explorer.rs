@@ -223,6 +223,59 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             }
         }
 
+        AppEvent::ExplorerHostActivateGoto => {
+            state.explorer.host.goto_buffer = state.explorer.host.path.clone();
+            state.explorer.host.goto_active = true;
+        }
+        AppEvent::ExplorerContainerActivateGoto => {
+            state.explorer.container.goto_buffer = state.explorer.container.path.clone();
+            state.explorer.container.goto_active = true;
+        }
+        AppEvent::ExplorerGotoUpdate(q) => {
+            if state.explorer.host.goto_active {
+                state.explorer.host.goto_buffer = q.clone();
+            } else if state.explorer.container.goto_active {
+                state.explorer.container.goto_buffer = q.clone();
+            }
+        }
+        AppEvent::ExplorerGotoCancel => {
+            if state.explorer.host.goto_active {
+                state.explorer.host.goto_active = false;
+                state.explorer.host.goto_buffer = String::new();
+            }
+            if state.explorer.container.goto_active {
+                state.explorer.container.goto_active = false;
+                state.explorer.container.goto_buffer = String::new();
+            }
+        }
+        AppEvent::ExplorerGotoSubmit => {
+            if state.explorer.host.goto_active {
+                let path = std::mem::take(&mut state.explorer.host.goto_buffer);
+                state.explorer.host.goto_active = false;
+                let path = if path.is_empty() { "/".to_string() } else { path };
+                state.explorer.host.path = path.clone();
+                state.explorer.host.selected = 0;
+                state.explorer.host.filter = String::new();
+                state.explorer.host.filter_active = false;
+                state.explorer.host.rename_active = false;
+                state.explorer.host.rename_buffer = String::new();
+                state.explorer.host.loading = true;
+                commands.push(list_cmd(&path));
+            } else if state.explorer.container.goto_active {
+                let path = std::mem::take(&mut state.explorer.container.goto_buffer);
+                state.explorer.container.goto_active = false;
+                let path = if path.is_empty() { "/".to_string() } else { path };
+                let path = if path.ends_with('/') { path } else { format!("{}/", path) };
+                state.explorer.container.path = path.clone();
+                state.explorer.container.selected = 0;
+                state.explorer.container.filter = String::new();
+                state.explorer.container.filter_active = false;
+                state.explorer.container.rename_active = false;
+                state.explorer.container.rename_buffer = String::new();
+                state.explorer.container.loading = true;
+                commands.push(list_container_cmd(state, &path));
+            }
+        }
         AppEvent::ExplorerRenameSubmit => {
             if state.explorer.host.rename_active {
                 let panel = &mut state.explorer.host;

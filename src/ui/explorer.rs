@@ -156,6 +156,7 @@ fn render_panel(
         ]);
         frame.render_widget(Paragraph::new(text).block(block), area);
         render_rename_bar(frame, inner_area, panel);
+        render_goto_bar(frame, inner_area, panel);
         if panel.filter_active {
             crate::ui::render_filter_bar(frame, inner_area, &panel.filter, "filter");
         }
@@ -202,6 +203,7 @@ fn render_panel(
             frame.render_widget(Paragraph::new(text).block(block), area);
         }
         render_rename_bar(frame, inner_area, panel);
+        render_goto_bar(frame, inner_area, panel);
         if panel.filter_active {
             crate::ui::render_filter_bar(frame, inner_area, &panel.filter, "filter");
         }
@@ -269,6 +271,7 @@ fn render_panel(
     frame.render_stateful_widget(table, area, &mut table_state);
     panel.scroll_offset = table_state.offset();
     render_rename_bar(frame, inner_area, panel);
+    render_goto_bar(frame, inner_area, panel);
     if panel.filter_active {
         crate::ui::render_filter_bar(frame, inner_area, &panel.filter, "filter");
     }
@@ -293,6 +296,29 @@ fn render_rename_bar(frame: &mut Frame, inner: Rect, panel: &ExplorerPanel) {
     frame.render_widget(
         Paragraph::new(format!("/{}", display))
             .style(Style::default().fg(Color::White).bg(Color::DarkGray)),
+        bar_area,
+    );
+}
+
+fn render_goto_bar(frame: &mut Frame, inner: Rect, panel: &ExplorerPanel) {
+    if !panel.goto_active {
+        return;
+    }
+    let bar_area = Rect {
+        x: inner.x,
+        y: inner.y,
+        width: inner.width.min(60),
+        height: 1,
+    };
+    let display = if panel.goto_buffer.is_empty() {
+        "  path...".to_string()
+    } else {
+        format!(" {}", panel.goto_buffer)
+    };
+    frame.render_widget(Clear, bar_area);
+    frame.render_widget(
+        Paragraph::new(format!(":{}", display))
+            .style(Style::default().fg(Color::White).bg(Color::Blue)),
         bar_area,
     );
 }

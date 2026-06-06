@@ -59,7 +59,11 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         || state.navigation.shell_config.is_some()
         || state.navigation.image_run.is_some()
         || state.explorer.host.filter_active
-        || state.explorer.container.filter_active;
+        || state.explorer.container.filter_active
+        || state.explorer.host.rename_active
+        || state.explorer.container.rename_active
+        || state.explorer.host.goto_active
+        || state.explorer.container.goto_active;
 
     if state.error_persistent {
         return Some(AppEvent::Info(String::new()));

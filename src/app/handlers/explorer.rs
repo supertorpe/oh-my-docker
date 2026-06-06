@@ -14,6 +14,9 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     if state.explorer.host.rename_active || state.explorer.container.rename_active {
         return handle_rename_input(key, state);
     }
+    if state.explorer.host.goto_active || state.explorer.container.goto_active {
+        return handle_goto_input(key, state);
+    }
 
     let code = key.code;
     let mods = key.modifiers;
@@ -104,6 +107,13 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
             ExplorerFocus::Right => AppEvent::ExplorerCopyFromContainer,
         });
     }
+    // ^P - go to path
+    if code == KeyCode::Char('p') && mods == KeyModifiers::CONTROL {
+        return Some(match state.explorer.focus {
+            ExplorerFocus::Left => AppEvent::ExplorerHostActivateGoto,
+            ExplorerFocus::Right => AppEvent::ExplorerContainerActivateGoto,
+        });
+    }
     // d - delete file/directory
     if code == KeyCode::Char('d') && mods == KeyModifiers::NONE {
         if show_parent && selected == 0 {
@@ -186,6 +196,31 @@ fn handle_rename_input(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         (KeyCode::Char(c), KeyModifiers::NONE) | (KeyCode::Char(c), KeyModifiers::SHIFT) => {
             let new_q = format!("{}{}", current, c);
             Some(AppEvent::ExplorerRenameUpdate(new_q))
+        }
+        _ => None,
+    }
+}
+
+fn handle_goto_input(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
+    let host_active = state.explorer.host.goto_active;
+    let current = if host_active {
+        &state.explorer.host.goto_buffer
+    } else {
+        &state.explorer.container.goto_buffer
+    };
+
+    match (key.code, key.modifiers) {
+        (KeyCode::Backspace, _) | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
+            let new_q = current.chars().take(current.chars().count().saturating_sub(1)).collect();
+            Some(AppEvent::ExplorerGotoUpdate(new_q))
+        }
+        (KeyCode::Esc, _) => {
+            Some(AppEvent::ExplorerGotoCancel)
+        }
+        (KeyCode::Enter, _) => Some(AppEvent::ExplorerGotoSubmit),
+        (KeyCode::Char(c), KeyModifiers::NONE) | (KeyCode::Char(c), KeyModifiers::SHIFT) => {
+            let new_q = format!("{}{}", current, c);
+            Some(AppEvent::ExplorerGotoUpdate(new_q))
         }
         _ => None,
     }
