@@ -256,6 +256,7 @@ pub struct ExplorerState {
     pub last_click_is_host: bool,
     pub last_click_item_index: usize,
     pub context_menu: Option<ContextMenuState>,
+    pub path_memory: HashMap<String, String>,
 }
 
 #[derive(Clone, Debug)]
@@ -280,6 +281,7 @@ impl Default for ExplorerState {
             transfer_message_clear_tick: 0,
             transfer_error_clear_tick: 0,
             context_menu: None,
+            path_memory: HashMap::new(),
             last_click_time: None,
             last_click_is_host: false,
             last_click_item_index: 0,

@@ -75,12 +75,18 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
         }
         AppEvent::Navigate(mode @ Mode::Explorer(_)) => {
             if let Mode::Explorer(id) = &mode {
+                // Save current path before overwriting
+                let prev_key = state.explorer.container_id.clone();
+                if !prev_key.is_empty() {
+                    state.explorer.path_memory.insert(prev_key, state.explorer.container.path.clone());
+                }
                 state.explorer.container_id = id.clone();
+                let saved = state.explorer.path_memory.get(&format!("container:{}", id)).cloned();
                 state.explorer.host.path = std::env::current_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|_| ".".to_string());
                 state.explorer.host.items.clear();
                 state.explorer.host.selected = 0;
                 state.explorer.host.loading = true;
-                state.explorer.container.path = "/".to_string();
+                state.explorer.container.path = saved.unwrap_or_else(|| "/".to_string());
                 state.explorer.container.items.clear();
                 state.explorer.container.selected = 0;
                 state.explorer.container.loading = true;
@@ -98,6 +104,13 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
         }
         AppEvent::Navigate(mode @ Mode::ExplorerVolume(_, _)) => {
             if let Mode::ExplorerVolume(_mountpoint, name) = &mode {
+                // Save current path
+                let prev_key = state.explorer.container_id.clone();
+                if !prev_key.is_empty() {
+                    state.explorer.path_memory.insert(prev_key, state.explorer.container.path.clone());
+                }
+                let vol_key = format!("volume:{}", name);
+                let saved = state.explorer.path_memory.get(&vol_key).cloned();
                 state.explorer.container_id = format!("__volume__:{}", name);
                 state.explorer.host.path = std::env::current_dir()
                     .unwrap_or_default()
@@ -106,7 +119,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                 state.explorer.host.items.clear();
                 state.explorer.host.selected = 0;
                 state.explorer.host.loading = true;
-                state.explorer.container.path = "/".to_string();
+                state.explorer.container.path = saved.unwrap_or_else(|| "/".to_string());
                 state.explorer.container.items.clear();
                 state.explorer.container.selected = 0;
                 state.explorer.container.loading = true;
@@ -118,7 +131,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                 state.explorer.last_click_time = None;
                 state.explorer.focus = crate::app::state::ExplorerFocus::Left;
                 commands.push(Command::ListHostDir(state.explorer.host.path.clone()));
-                commands.push(Command::ListVolumeDir(name.clone(), "/".to_string()));
+                commands.push(Command::ListVolumeDir(name.clone(), state.explorer.container.path.clone()));
             }
             state.navigation.mode_stack.push(mode.clone());
         }

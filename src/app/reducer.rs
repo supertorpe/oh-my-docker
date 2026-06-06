@@ -373,6 +373,16 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                                     format!("/{}/", parts[..parts.len() - 1].join("/"))
                                 };
                                 state.explorer.container.path.clone_from(&new_path);
+                                {
+                                    let key = if matches!(state.navigation.mode_stack.current(), Mode::ExplorerVolume(_, _)) {
+                                        if let Mode::ExplorerVolume(_, name) = state.navigation.mode_stack.current() {
+                                            format!("volume:{}", name)
+                                        } else { unreachable!() }
+                                    } else {
+                                        format!("container:{}", state.explorer.container_id)
+                                    };
+                                    state.explorer.path_memory.insert(key, state.explorer.container.path.clone());
+                                }
                                 state.explorer.container.selected = 0;
                                 state.explorer.container.filter = String::new();
                                 state.explorer.container.filter_active = false;
@@ -428,6 +438,16 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                                         format!("{}/{}", path, entry_name)
                                     };
                                     state.explorer.container.path = format!("{}/", new_path);
+                                    {
+                                        let key = if matches!(state.navigation.mode_stack.current(), Mode::ExplorerVolume(_, _)) {
+                                            if let Mode::ExplorerVolume(_, name) = state.navigation.mode_stack.current() {
+                                                format!("volume:{}", name)
+                                            } else { unreachable!() }
+                                        } else {
+                                            format!("container:{}", state.explorer.container_id)
+                                        };
+                                        state.explorer.path_memory.insert(key, state.explorer.container.path.clone());
+                                    }
                                     state.explorer.container.selected = 0;
                                     state.explorer.container.filter = String::new();
                                     state.explorer.container.filter_active = false;

@@ -49,6 +49,15 @@ fn list_container_cmd(state: &AppState, path: &str) -> Command {
     }
 }
 
+fn save_container_path(state: &mut AppState) {
+    let key = if let Some(name) = volume_name(state) {
+        format!("volume:{}", name)
+    } else {
+        format!("container:{}", state.explorer.container_id)
+    };
+    state.explorer.path_memory.insert(key, state.explorer.container.path.clone());
+}
+
 pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
     let mut commands = Vec::new();
 
@@ -181,6 +190,7 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                 state.explorer.container.filter_active = false;
                 state.explorer.container.rename_active = false;
                 state.explorer.container.rename_buffer = String::new();
+                save_container_path(state);
                 commands.push(list_container_cmd(state, "/"));
                 return commands;
             }
@@ -192,7 +202,25 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             state.explorer.container.filter_active = false;
             state.explorer.container.rename_active = false;
             state.explorer.container.rename_buffer = String::new();
+            save_container_path(state);
             commands.push(list_container_cmd(state, &parent_clone));
+        }
+
+        AppEvent::ExplorerContainerEnterDir(name) => {
+            let path = &state.explorer.container.path;
+            let new_path = if path.ends_with('/') {
+                format!("{}{}", path, name)
+            } else {
+                format!("{}/{}", path, name)
+            };
+            state.explorer.container.path = format!("{}/", new_path);
+            state.explorer.container.selected = 0;
+            state.explorer.container.filter = String::new();
+            state.explorer.container.filter_active = false;
+            state.explorer.container.rename_active = false;
+            state.explorer.container.rename_buffer = String::new();
+            save_container_path(state);
+            commands.push(list_container_cmd(state, &state.explorer.container.path));
         }
 
         AppEvent::ExplorerHostEnterDir(name) => {
@@ -209,22 +237,6 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             state.explorer.host.rename_active = false;
             state.explorer.host.rename_buffer = String::new();
             commands.push(list_cmd( &new_path_clone));
-        }
-
-        AppEvent::ExplorerContainerEnterDir(name) => {
-            let path = &state.explorer.container.path;
-            let new_path = if path.ends_with('/') {
-                format!("{}{}", path, name)
-            } else {
-                format!("{}/{}", path, name)
-            };
-            state.explorer.container.path = format!("{}/", new_path);
-            state.explorer.container.selected = 0;
-            state.explorer.container.filter = String::new();
-            state.explorer.container.filter_active = false;
-            state.explorer.container.rename_active = false;
-            state.explorer.container.rename_buffer = String::new();
-            commands.push(list_container_cmd(state, &state.explorer.container.path));
         }
 
         AppEvent::ExplorerHostRefresh => {
