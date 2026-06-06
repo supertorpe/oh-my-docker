@@ -145,8 +145,7 @@ fn render_panel(
     let inner_area = block.inner(area);
 
     if panel.loading && panel.items.is_empty() {
-        let spinner_chars = ['\u{280B}', '\u{2819}', '\u{2839}', '\u{2838}', '\u{283C}', '\u{2834}', '\u{2826}', '\u{2827}', '\u{280F}'];
-        let spinner = spinner_chars[(tick_count as usize / 3) % spinner_chars.len()];
+        let spinner = crate::ui::spinner_char(tick_count);
         let text = ratatui::text::Text::from(vec![
             Line::from(""),
             Line::from(Span::styled(
@@ -164,6 +163,7 @@ fn render_panel(
     }
 
     let show_parent = panel.path != "/";
+    let wide = inner_area.width >= 55;
 
     if panel.items.is_empty() && !panel.loading {
         if show_parent {
@@ -174,7 +174,12 @@ fn render_panel(
                 Style::default()
             };
             let mut rows = Vec::new();
-            rows.push(Row::new(vec![Cell::from(format!("  {} ..", indicator))])
+            let cell = if wide {
+                Cell::from(format!("  {} ..  ", indicator))
+            } else {
+                Cell::from(format!("  {} ..", indicator))
+            };
+            rows.push(Row::new(vec![cell])
                 .style(style)
                 .height(1));
             let table = Table::new(rows, vec![Constraint::Fill(1)])
@@ -213,17 +218,19 @@ fn render_panel(
         } else {
             Style::default()
         };
-        rows.push(Row::new(vec![Cell::from(format!("  {} ..", indicator))])
-            .style(style)
-            .height(1));
+        let cell = if wide {
+            Cell::from(format!("  {} ..  ", indicator))
+        } else {
+            Cell::from(format!("  {} ..", indicator))
+        };
+        rows.push(Row::new(vec![cell]).style(style).height(1));
     }
 
     for (i, entry) in panel.items.iter().enumerate() {
         let item_idx = if show_parent { i + 1 } else { i };
         let show_cursor = is_focused && panel.selected == item_idx;
         let indicator = if show_cursor { "\u{25B6}" } else { " " };
-        let prefix = if entry.is_dir { "\u{1F4C1}" } else { "\u{1F4C4}" };
-        let display = format!("  {} {} {}", indicator, prefix, entry.name);
+        let icon = if entry.is_dir { "\u{1F4C1}" } else { "\u{1F4C4}" };
 
         let style = if show_cursor {
             Style::default().fg(Color::White).bg(Color::Blue)
@@ -231,7 +238,19 @@ fn render_panel(
             Style::default()
         };
 
-        rows.push(Row::new(vec![Cell::from(display)]).style(style).height(1));
+        let cell = if wide {
+            Cell::from(format!(
+                " {} {} {:>8} {}  {}",
+                indicator, entry.permissions, entry.size_str(), entry.modified, entry.name
+            ))
+        } else {
+            Cell::from(format!(
+                " {} {} {}",
+                indicator, icon, entry.name
+            ))
+        };
+
+        rows.push(Row::new(vec![cell]).style(style).height(1));
     }
 
     let widths = vec![Constraint::Fill(1)];

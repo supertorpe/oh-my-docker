@@ -163,6 +163,25 @@ pub enum ExplorerFocus {
 pub struct ExplorerEntry {
     pub name: String,
     pub is_dir: bool,
+    pub size: i64,
+    pub modified: String,
+    pub permissions: String,
+}
+
+impl ExplorerEntry {
+    pub fn size_str(&self) -> String {
+        if self.is_dir {
+            String::new()
+        } else if self.size >= 1_000_000_000 {
+            format!("{:.1}G", self.size as f64 / 1_000_000_000.0)
+        } else if self.size >= 1_000_000 {
+            format!("{:.1}M", self.size as f64 / 1_000_000.0)
+        } else if self.size >= 1_000 {
+            format!("{:.1}K", self.size as f64 / 1_000.0)
+        } else {
+            self.size.to_string()
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
 use anyhow::Result;
@@ -16,6 +17,78 @@ use tokio::sync::mpsc::UnboundedSender;
 use crate::app::event::AppEvent;
 use crate::app::state::ExplorerEntry;
 
+fn format_mode(mode: u32) -> String {
+    let mut s = String::with_capacity(10);
+    s.push(if mode & 0o040000 != 0 { 'd' } else { '-' });
+    s.push(if mode & 0o400 != 0 { 'r' } else { '-' });
+    s.push(if mode & 0o200 != 0 { 'w' } else { '-' });
+    s.push(if mode & 0o100 != 0 { 'x' } else { '-' });
+    s.push(if mode & 0o040 != 0 { 'r' } else { '-' });
+    s.push(if mode & 0o020 != 0 { 'w' } else { '-' });
+    s.push(if mode & 0o010 != 0 { 'x' } else { '-' });
+    s.push(if mode & 0o004 != 0 { 'r' } else { '-' });
+    s.push(if mode & 0o002 != 0 { 'w' } else { '-' });
+    s.push(if mode & 0o001 != 0 { 'x' } else { '-' });
+    s
+}
+
+fn parse_ls_line(line: &str) -> Option<ExplorerEntry> {
+    let line = line.trim();
+    if line.is_empty() || line.starts_with("total ") {
+        return None;
+    }
+    let perms_end = if line.as_bytes().get(0).copied() == Some(b'd')
+        || line.as_bytes().get(0).copied() == Some(b'-')
+        || line.as_bytes().get(0).copied() == Some(b'l')
+    {
+        let mut idx = 0;
+        let bytes = line.as_bytes();
+        // Find the end of the first whitespace-delimited field
+        while idx < bytes.len() && bytes[idx] != b' ' {
+            idx += 1;
+        }
+        idx
+    } else {
+        return None;
+    };
+
+    let perms = &line[..perms_end];
+    let is_dir = perms.starts_with('d');
+    let rest = line[perms_end..].trim_start();
+
+    // rest: links owner group size month day time name
+    let fields: Vec<&str> = rest.split_whitespace().collect();
+    if fields.len() < 8 {
+        return None;
+    }
+
+    let size: i64 = fields[3].parse().unwrap_or(0);
+    let month = fields[4];
+    let day = fields[5];
+    let time_or_year = fields[6];
+    let modified = format!("{} {} {}", month, day, time_or_year);
+
+    // fields 7+ is the filename (may contain spaces)
+    let mut name = fields[7..].join(" ");
+    // Remove trailing symlink arrow
+    if let Some(pos) = name.find(" -> ") {
+        name.truncate(pos);
+    }
+    let name = name.strip_suffix('/').unwrap_or(&name).to_string();
+
+    if name == "." || name == ".." {
+        return None;
+    }
+
+    Some(ExplorerEntry {
+        name,
+        is_dir,
+        size,
+        modified,
+        permissions: perms.to_string(),
+    })
+}
+
 pub async fn list_container_dir(
     docker: &Docker,
     container_id: &str,
@@ -27,7 +100,7 @@ pub async fn list_container_dir(
             CreateExecOptions {
                 cmd: Some(vec![
                     "ls".to_string(),
-                    "-1ap".to_string(),
+                    "-lap".to_string(),
                     "--".to_string(),
                     path.to_string(),
                 ]),
@@ -60,27 +133,7 @@ pub async fn list_container_dir(
     }
 
     let stdout = String::from_utf8_lossy(&stdout_bytes);
-    let mut entries = Vec::new();
-
-    for line in stdout.lines() {
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-        let is_dir = line.ends_with('/');
-        let name = if is_dir {
-            line.strip_suffix('/').unwrap_or(line)
-        } else {
-            line
-        };
-        if name == "." || name == ".." {
-            continue;
-        }
-        entries.push(ExplorerEntry {
-            name: name.to_string(),
-            is_dir,
-        });
-    }
+    let mut entries: Vec<ExplorerEntry> = stdout.lines().filter_map(parse_ls_line).collect();
 
     entries.sort_by(|a, b| {
         a.is_dir.cmp(&b.is_dir).then(a.name.to_lowercase().cmp(&b.name.to_lowercase()))
@@ -103,10 +156,26 @@ pub async fn list_host_dir(path: &str) -> Result<Vec<ExplorerEntry>> {
             continue;
         }
 
-        let is_dir = entry.metadata().map(|m| m.is_dir()).unwrap_or(false);
+        let meta = entry.metadata().ok();
+        let is_dir = meta.as_ref().map(|m| m.is_dir()).unwrap_or(false);
+        let size = meta.as_ref().map(|m| m.len() as i64).unwrap_or(0);
+        let modified = meta.as_ref()
+            .and_then(|m| m.modified().ok())
+            .map(|t| {
+                let dt: chrono::DateTime<chrono::Local> = t.into();
+                dt.format("%b %e %H:%M").to_string()
+            })
+            .unwrap_or_default();
+        let permissions = meta.as_ref()
+            .map(|m| format_mode(m.permissions().mode() & 0o7777))
+            .unwrap_or_default();
+
         entries.push(ExplorerEntry {
             name,
             is_dir,
+            size,
+            modified,
+            permissions,
         });
     }
 
