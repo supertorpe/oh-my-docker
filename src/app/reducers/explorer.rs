@@ -630,6 +630,13 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                                         } else {
                                             format!("{}/{}", panel.path, entry.name)
                                         };
+                                        state.preview = Some(crate::app::state::FilePreviewState {
+                                            path: path.clone(),
+                                            content: Vec::new(),
+                                            scroll_offset: 0,
+                                            loading: true,
+                                            error: None,
+                                        });
                                         commands.push(Command::LoadFilePreview(
                                             if is_host { String::new() } else { state.explorer.container_id.clone() },
                                             path,
@@ -646,8 +653,22 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
                                 }
                                 "delete" => {
                                     if let Some(entry) = panel.items.get(item_idx) {
-                                        panel.selected_names.insert(entry.name.clone());
-                                        commands.extend(crate::app::reducers::explorer::reduce(state, &AppEvent::ExplorerDeleteSelected));
+                                        let full_path = if panel.path == "/" || panel.path.is_empty() {
+                                            format!("/{}", entry.name)
+                                        } else {
+                                            format!("{}/{}", panel.path, entry.name)
+                                        };
+                                        commands.extend(crate::app::reducers::navigation::reduce(state, &AppEvent::ShowConfirmDialog(
+                                            format!("Delete '{}'?", full_path),
+                                            if is_host {
+                                                crate::app::event::ConfirmAction::DeleteHostFile(full_path)
+                                            } else {
+                                                crate::app::event::ConfirmAction::DeleteContainerFile(
+                                                    state.explorer.container_id.clone(),
+                                                    full_path,
+                                                )
+                                            },
+                                        )));
                                     }
                                 }
                                 "enter_dir" => {
