@@ -48,6 +48,20 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         return Some(AppEvent::Info(String::new()));
     }
 
+    // Preview mode intercepts keys when visible
+    if state.preview.is_some() {
+        return match key.code {
+            KeyCode::Esc => Some(AppEvent::ClosePreview),
+            KeyCode::Down | KeyCode::Char('j') => Some(AppEvent::ScrollPreview(1)),
+            KeyCode::Up | KeyCode::Char('k') => Some(AppEvent::ScrollPreview(-1)),
+            KeyCode::PageDown => Some(AppEvent::ScrollPreview(20)),
+            KeyCode::PageUp => Some(AppEvent::ScrollPreview(-20)),
+            KeyCode::Char('g') if key.modifiers == KeyModifiers::NONE => Some(AppEvent::ScrollPreview(-100000)),
+            KeyCode::Char('G') => Some(AppEvent::ScrollPreview(100000)),
+            _ => Some(AppEvent::ClosePreview),
+        };
+    }
+
     let in_input_mode = state.containers.filter_active
         || state.images.filter_active
         || state.events.filter_active

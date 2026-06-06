@@ -83,6 +83,14 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         if let Some(entry) = items.get(entry_idx) {
             if entry.is_dir {
                 return Some(if host_selected { AppEvent::ExplorerHostEnterDir(entry.name.clone()) } else { AppEvent::ExplorerContainerEnterDir(entry.name.clone()) });
+            } else {
+                let full_path = if *path == "/" || path.is_empty() {
+                    format!("/{}", entry.name)
+                } else {
+                    let p = path.strip_suffix('/').unwrap_or(path);
+                    format!("{}/{}", p, entry.name)
+                };
+                return Some(AppEvent::ShowFilePreview(full_path, host_selected));
             }
         }
     }

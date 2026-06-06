@@ -33,6 +33,7 @@ pub mod column_picker;
 pub mod container_details;
 pub mod diagnostics;
 pub mod explorer;
+pub mod preview;
 pub mod logs;
 pub mod resource_panel;
 pub mod shell;
@@ -126,7 +127,12 @@ fn render_content(frame: &mut Frame, state: &mut AppState, area: Rect) {
         Mode::Statistics => statistics::render(frame, area, &state.statistics, state.tick_count),
         Mode::Networks => resource_panel::render_simple_list::<resource_panel::NetworkResource>(frame, area, &mut state.networks, state.tick_count, state.config.polling.networks_ms),
         Mode::Volumes => resource_panel::render_simple_list::<resource_panel::VolumeResource>(frame, area, &mut state.volumes, state.tick_count, state.config.polling.volumes_ms),
-        Mode::Explorer(_) | Mode::ExplorerVolume(_, _) => explorer::render(frame, area, state),
+        Mode::Explorer(_) | Mode::ExplorerVolume(_, _) => {
+            explorer::render(frame, area, state);
+            if let Some(ref preview) = state.preview {
+                preview::render(frame, area, preview);
+            }
+        }
         Mode::Help => help::render(frame, area, &mut state.navigation.help, &state.config),
         Mode::ConfirmDialog { .. } => confirm_dialog::render(frame, area, state.navigation.mode_stack.current()),
         Mode::InfoDialog(_) => render_info_dialog(frame, area, state.navigation.mode_stack.current()),

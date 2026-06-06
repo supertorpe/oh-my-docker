@@ -240,6 +240,15 @@ pub struct ExplorerState {
     pub last_click_item_index: usize,
 }
 
+#[derive(Clone, Debug)]
+pub struct FilePreviewState {
+    pub path: String,
+    pub content: Vec<String>,
+    pub scroll_offset: usize,
+    pub loading: bool,
+    pub error: Option<String>,
+}
+
 impl Default for ExplorerState {
     fn default() -> Self {
         Self {
@@ -269,6 +278,7 @@ pub struct AppState {
     pub networks: ResourceState<NetworkResource>,
     pub volumes: ResourceState<VolumeResource>,
     pub explorer: ExplorerState,
+    pub preview: Option<FilePreviewState>,
     pub config: OmdockerConfig,
     pub keymap: KeyMap,
     pub update_available: Option<(String, String)>,
@@ -296,6 +306,7 @@ impl AppState {
             networks: ResourceState::default(),
             volumes: ResourceState::default(),
             explorer: ExplorerState::default(),
+            preview: None,
             selected_tab: mode::mode_to_tab(&mode::Mode::Containers).unwrap_or(0),
             previous_tab: 0,
             config: OmdockerConfig::default(),

@@ -267,7 +267,7 @@ fn handle_commands(commands: Vec<Command>, docker: &Option<Docker>, tx: &mpsc::U
             Command::DownloadUpdate { version, download_url } => {
                 update::spawn_download_update(tx.clone(), version, download_url);
             }
-            Command::ListContainerDir(_, _) | Command::ListHostDir(_) | Command::ListVolumeDir(_, _) | Command::CopyToContainer(_, _, _) | Command::CopyFromContainer(_, _, _) | Command::DeleteHostFile(_) | Command::DeleteContainerFile(_, _) | Command::RenameHostFile(_, _) | Command::RenameContainerFile(_, _, _) | Command::CreateHostFile(_, _) | Command::CreateContainerFile(_, _, _) | Command::FetchContainerWorkingDir(_) | Command::RemoveVolumeHelper(_) => {
+            Command::ListContainerDir(_, _) | Command::ListHostDir(_) | Command::ListVolumeDir(_, _) | Command::CopyToContainer(_, _, _) | Command::CopyFromContainer(_, _, _) | Command::DeleteHostFile(_) | Command::DeleteContainerFile(_, _) | Command::RenameHostFile(_, _) | Command::RenameContainerFile(_, _, _) | Command::CreateHostFile(_, _) | Command::CreateContainerFile(_, _, _) | Command::LoadFilePreview(_, _, _) | Command::FetchContainerWorkingDir(_) | Command::RemoveVolumeHelper(_) => {
                 handle_explorer_commands(cmd, docker.as_ref().unwrap(), tx, state);
             }
             _ => {
@@ -361,6 +361,80 @@ fn handle_explorer_commands(
                     }
                     Err(e) => {
                         let _ = tx.send(app::event::AppEvent::ExplorerTransferError(format!("Failed to list directory: {}", e)));
+                    }
+                }
+            });
+        }
+        Command::LoadFilePreview(container_id, path, is_host) => {
+            let d = docker.clone();
+            let tx = tx.clone();
+            tokio::spawn(async move {
+                let result: anyhow::Result<Vec<String>> = if is_host {
+                    tokio::fs::read_to_string(&path).await
+                        .map_err(anyhow::Error::from)
+                        .map(|s| {
+                            let lines: Vec<String> = s.lines()
+                                .take(2000)
+                                .map(|l| {
+                                    if l.len() > 1000 { format!("{}...", &l[..1000]) } else { l.to_string() }
+                                })
+                                .collect();
+                            let mut l = lines;
+                            if s.lines().count() > 2000 {
+                                l.push("-- truncated to 2000 lines --".to_string());
+                            }
+                            l
+                        })
+                } else {
+                    use bollard::exec::{CreateExecOptions, StartExecOptions, StartExecResults};
+                    use bollard::container::LogOutput;
+                    use futures_util::StreamExt;
+                    let exec = d.create_exec(
+                        &container_id,
+                        CreateExecOptions {
+                            cmd: Some(vec!["cat".to_string(), "--".to_string(), path.clone()]),
+                            attach_stdout: Some(true),
+                            attach_stderr: Some(true),
+                            ..Default::default()
+                        },
+                    ).await;
+                    match exec {
+                        Ok(exec) => {
+                            match d.start_exec(&exec.id, None::<StartExecOptions>).await {
+                                Ok(StartExecResults::Attached { mut output, .. }) => {
+                                    let mut stdout_bytes = Vec::new();
+                                    while let Some(msg) = output.next().await {
+                                        if let Ok(LogOutput::StdOut { message }) = msg {
+                                            stdout_bytes.extend_from_slice(&message);
+                                            if stdout_bytes.len() > 1_000_000 { break; }
+                                        }
+                                    }
+                                    let s = String::from_utf8_lossy(&stdout_bytes);
+                                    let lines: Vec<String> = s.lines()
+                                        .take(2000)
+                                        .map(|l| {
+                                            if l.len() > 1000 { format!("{}...", &l[..1000]) } else { l.to_string() }
+                                        })
+                                        .collect();
+                                    let mut result = lines;
+                                    if s.lines().count() > 2000 {
+                                        result.push("-- truncated to 2000 lines --".to_string());
+                                    }
+                                    Ok(result)
+                                }
+                                Ok(_) => Ok(vec!["[binary or empty output]".to_string()]),
+                                Err(e) => Err(anyhow::anyhow!("{}", e)),
+                            }
+                        }
+                        Err(e) => Err(anyhow::anyhow!("{}", e)),
+                    }
+                };
+                match result {
+                    Ok(lines) => {
+                        let _ = tx.send(app::event::AppEvent::PreviewContent(path, lines));
+                    }
+                    Err(e) => {
+                        let _ = tx.send(app::event::AppEvent::PreviewError(format!("Preview failed: {}", e)));
                     }
                 }
             });

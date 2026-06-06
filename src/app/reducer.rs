@@ -678,6 +678,44 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                 | AppEvent::ContainerWorkingDir(_, _) => {
                     commands.extend(crate::app::reducers::explorer::reduce(state, &event));
                 }
+                AppEvent::ShowFilePreview(path, is_host) => {
+                    state.preview = Some(crate::app::state::FilePreviewState {
+                        path: path.clone(),
+                        content: Vec::new(),
+                        scroll_offset: 0,
+                        loading: true,
+                        error: None,
+                    });
+                    let cid = if *is_host {
+                        String::new()
+                    } else {
+                        state.explorer.container_id.clone()
+                    };
+                    commands.push(Command::LoadFilePreview(cid, path.clone(), *is_host));
+                }
+                AppEvent::PreviewContent(path, lines) => {
+                    if let Some(ref mut p) = state.preview {
+                        if p.path == *path {
+                            p.content = lines.clone();
+                            p.loading = false;
+                        }
+                    }
+                }
+                AppEvent::PreviewError(msg) => {
+                    if let Some(ref mut p) = state.preview {
+                        p.loading = false;
+                        p.error = Some(msg.clone());
+                    }
+                }
+                AppEvent::ClosePreview => {
+                    state.preview = None;
+                }
+                AppEvent::ScrollPreview(delta) => {
+                    if let Some(ref mut p) = state.preview {
+                        let max = p.content.len().saturating_sub(1);
+                        p.scroll_offset = crate::util::scroll_offset(p.scroll_offset, *delta, max);
+                    }
+                }
                 AppEvent::StartDiagnostics(_)
                 | AppEvent::DiagnosticsPhaseUpdate(_)
                 | AppEvent::DiagnosticsChunk(_)
