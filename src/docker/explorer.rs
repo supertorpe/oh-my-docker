@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
@@ -167,7 +168,20 @@ pub async fn list_host_dir(path: &str) -> Result<Vec<ExplorerEntry>> {
             })
             .unwrap_or_default();
         let permissions = meta.as_ref()
-            .map(|m| format_mode(m.permissions().mode() & 0o7777))
+            .map(|m| {
+                #[cfg(unix)]
+                {
+                    format_mode(m.permissions().mode() & 0o7777)
+                }
+                #[cfg(not(unix))]
+                {
+                    if m.permissions().readonly() {
+                        "r--r--r--".to_string()
+                    } else {
+                        "rw-rw-rw-".to_string()
+                    }
+                }
+            })
             .unwrap_or_default();
 
         entries.push(ExplorerEntry {
