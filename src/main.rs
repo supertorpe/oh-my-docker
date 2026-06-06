@@ -370,21 +370,36 @@ fn handle_explorer_commands(
             let tx = tx.clone();
             tokio::spawn(async move {
                 let result: anyhow::Result<Vec<String>> = if is_host {
-                    tokio::fs::read_to_string(&path).await
-                        .map_err(anyhow::Error::from)
-                        .map(|s| {
-                            let lines: Vec<String> = s.lines()
-                                .take(2000)
-                                .map(|l| {
-                                    if l.len() > 1000 { format!("{}...", &l[..1000]) } else { l.to_string() }
-                                })
-                                .collect();
-                            let mut l = lines;
-                            if s.lines().count() > 2000 {
-                                l.push("-- truncated to 2000 lines --".to_string());
+                    match tokio::fs::read(&path).await {
+                        Ok(bytes) => {
+                            if bytes.iter().take(8192).any(|&b| b == 0) {
+                                Err(anyhow::anyhow!("file appears to be binary (null byte detected)"))
+                            } else {
+                                match String::from_utf8(bytes) {
+                                    Ok(s) => {
+                                        let lines: Vec<String> = s.lines()
+                                            .take(2000)
+                                            .map(|l| {
+                                                if l.len() > 1000 {
+                                                    let trunc = l.char_indices().nth(1000).map(|(i, _)| i).unwrap_or(l.len());
+                                                    format!("{}...", &l[..trunc])
+                                                } else {
+                                                    l.to_string()
+                                                }
+                                            })
+                                            .collect();
+                                        let mut l = lines;
+                                        if s.lines().count() > 2000 {
+                                            l.push("-- truncated to 2000 lines --".to_string());
+                                        }
+                                        Ok(l)
+                                    }
+                                    Err(_) => Err(anyhow::anyhow!("file is not valid UTF-8 text")),
+                                }
                             }
-                            l
-                        })
+                        }
+                        Err(e) => Err(anyhow::Error::from(e)),
+                    }
                 } else {
                     use bollard::exec::{CreateExecOptions, StartExecOptions, StartExecResults};
                     use bollard::container::LogOutput;
@@ -409,18 +424,27 @@ fn handle_explorer_commands(
                                             if stdout_bytes.len() > 1_000_000 { break; }
                                         }
                                     }
-                                    let s = String::from_utf8_lossy(&stdout_bytes);
-                                    let lines: Vec<String> = s.lines()
-                                        .take(2000)
-                                        .map(|l| {
-                                            if l.len() > 1000 { format!("{}...", &l[..1000]) } else { l.to_string() }
-                                        })
-                                        .collect();
-                                    let mut result = lines;
-                                    if s.lines().count() > 2000 {
-                                        result.push("-- truncated to 2000 lines --".to_string());
+                                    if stdout_bytes.iter().take(8192).any(|&b| b == 0) {
+                                        Ok(vec!["[binary file — preview not available]".to_string()])
+                                    } else {
+                                        let s = String::from_utf8_lossy(&stdout_bytes);
+                                        let lines: Vec<String> = s.lines()
+                                            .take(2000)
+                                            .map(|l| {
+                                                if l.len() > 1000 {
+                                                    let trunc = l.char_indices().nth(1000).map(|(i, _)| i).unwrap_or(l.len());
+                                                    format!("{}...", &l[..trunc])
+                                                } else {
+                                                    l.to_string()
+                                                }
+                                            })
+                                            .collect();
+                                        let mut result = lines;
+                                        if s.lines().count() > 2000 {
+                                            result.push("-- truncated to 2000 lines --".to_string());
+                                        }
+                                        Ok(result)
                                     }
-                                    Ok(result)
                                 }
                                 Ok(_) => Ok(vec!["[binary or empty output]".to_string()]),
                                 Err(e) => Err(anyhow::anyhow!("{}", e)),
