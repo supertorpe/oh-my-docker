@@ -259,6 +259,7 @@ pub enum AppEvent {
     PreviewError(String),
     ClosePreview,
     ExplorerContextMenuAction(String),
+    ContainersContextMenuAction(String),
     ScrollPreview(i32),
     ExplorerHostDirUpdated(String, Vec<ExplorerEntry>),
     ContainerWorkingDir(String, String),

@@ -241,6 +241,31 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
             match kind {
                 MouseClickKind::ScrollUp => scroll_state(state, -1),
                 MouseClickKind::ScrollDown => scroll_state(state, 1),
+                _ if state.container_context_menu.is_some()
+                    && matches!(kind, MouseClickKind::Left | MouseClickKind::Right) => {
+                    let close = {
+                        let menu = state.container_context_menu.as_ref().unwrap();
+                        let menu_w = menu.items.iter().map(|i| i.label.len()).max().unwrap_or(20) as u16 + 4;
+                        let menu_h = menu.items.len() as u16 + 2;
+                        let area_h = if is_base { state.term_height.saturating_sub(4) } else { state.term_height.saturating_sub(1) };
+                        let mx = menu.x.min(state.term_width.saturating_sub(menu_w));
+                        let my = menu.y.min(area_h.saturating_sub(menu_h));
+                        let inside = *col >= mx && *col < mx + menu_w && *row >= my && *row < my + menu_h;
+                        if inside && matches!(kind, MouseClickKind::Left) && *row >= my + 1 {
+                            let item_idx = (*row - my - 1) as usize;
+                            if item_idx < menu.items.len() {
+                                state.container_context_menu.as_mut().unwrap().selected = item_idx;
+                                let select_event = AppEvent::ContainersContextMenuAction("select".into());
+                                commands.extend(crate::app::reducers::container::reduce(state, &select_event));
+                                return commands;
+                            }
+                        }
+                        !inside
+                    };
+                    if close {
+                        state.container_context_menu = None;
+                    }
+                }
                 _ if state.explorer.context_menu.is_some()
                     && matches!(kind, MouseClickKind::Left | MouseClickKind::Right) => {
                     let close = {
@@ -582,6 +607,49 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                         }
                     }
                 }
+                MouseClickKind::Right if matches!(state.navigation.mode_stack.current(), Mode::Containers) && *row >= 5 => {
+                    if let Some(filtered_idx) = container_filtered_idx_at_visual_row(state, *row) {
+                        if let Some(&item_idx) = state.containers.filtered.get(filtered_idx) {
+                            if let Some(container) = state.containers.items.get(item_idx) {
+                                state.containers.selected = filtered_idx;
+                                let is_running = container.state == "running";
+                                let mut items = Vec::new();
+                                items.push(crate::app::state::ContextMenuItem {
+                                    label: "Details".into(),
+                                    action: "details".into(),
+                                });
+                                items.push(crate::app::state::ContextMenuItem {
+                                    label: "Logs".into(),
+                                    action: "logs".into(),
+                                });
+                                items.push(crate::app::state::ContextMenuItem {
+                                    label: "Shell".into(),
+                                    action: "shell".into(),
+                                });
+                                items.push(crate::app::state::ContextMenuItem {
+                                    label: "Explorer".into(),
+                                    action: "explorer".into(),
+                                });
+                                items.push(crate::app::state::ContextMenuItem {
+                                    label: if is_running { "Stop".into() } else { "Start".into() },
+                                    action: "start_stop".into(),
+                                });
+                                items.push(crate::app::state::ContextMenuItem {
+                                    label: "Delete".into(),
+                                    action: "delete".into(),
+                                });
+                                state.container_context_menu = Some(crate::app::state::ContextMenuState {
+                                    x: *col,
+                                    y: *row,
+                                    selected: 0,
+                                    items,
+                                    is_host: true,
+                                    item_index: filtered_idx,
+                                });
+                            }
+                        }
+                    }
+                }
                 _ => {}
             }
         }
@@ -666,7 +734,8 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                 | AppEvent::ToggleColumnPicker
                 | AppEvent::ToggleColumn(_)
                 | AppEvent::BatchToggleContainers(_)
-                | AppEvent::CycleStatusFilter => {
+                | AppEvent::CycleStatusFilter
+                | AppEvent::ContainersContextMenuAction(_) => {
                     commands.extend(crate::app::reducers::container::reduce(state, &event));
                 }
                 AppEvent::ImagesUpdated(_)

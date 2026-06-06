@@ -91,7 +91,7 @@ pub fn render(frame: &mut Frame, state: &mut AppState) {
 
 fn render_content(frame: &mut Frame, state: &mut AppState, area: Rect) {
     match state.navigation.mode_stack.current() {
-        Mode::Containers => resource_panel::render_containers(frame, area, &mut state.containers, &state.container_extra, state.tick_count, state.config.polling.containers_ms),
+        Mode::Containers => resource_panel::render_containers(frame, area, &mut state.containers, &state.container_extra, state.tick_count, state.config.polling.containers_ms, &state.container_context_menu),
         Mode::ContainerDetails(_) => {
             if let Some(ref mut details) = state.navigation.details {
                 container_details::render(frame, area, details, &state.containers, &state.container_extra);

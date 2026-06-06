@@ -139,6 +139,73 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             }
             commands.push(Command::BatchToggleContainers(ids.clone()));
         }
+        AppEvent::ContainersContextMenuAction(action) => {
+            match action.as_str() {
+                "close" => {
+                    state.container_context_menu = None;
+                }
+                "up" => {
+                    if let Some(ref mut menu) = state.container_context_menu {
+                        menu.selected = menu.selected.saturating_sub(1);
+                    }
+                }
+                "down" => {
+                    if let Some(ref mut menu) = state.container_context_menu {
+                        let max = menu.items.len().saturating_sub(1);
+                        if menu.selected < max {
+                            menu.selected += 1;
+                        }
+                    }
+                }
+                "select" => {
+                    if let Some(ref menu) = state.container_context_menu.clone() {
+                        let filtered_idx = menu.item_index;
+                        let action_str = menu.items.get(menu.selected).map(|i| i.action.clone());
+                        state.container_context_menu = None;
+                        if let Some(action_str) = action_str {
+                            if let Some(&item_idx) = state.containers.filtered.get(filtered_idx) {
+                                if let Some(container) = state.containers.items.get(item_idx) {
+                                    let id = container.id.clone();
+                                    let name = container.name.clone();
+                                    let is_running = container.state == "running";
+                                    match action_str.as_str() {
+                                        "details" => {
+                                            commands.extend(crate::app::reducers::navigation::reduce(state, &AppEvent::ShowDetails));
+                                        }
+                                        "logs" => {
+                                            commands.extend(crate::app::reducers::navigation::reduce(state, &AppEvent::Navigate(crate::app::mode::Mode::Logs(id))));
+                                        }
+                                        "shell" => {
+                                            commands.extend(crate::app::reducers::navigation::reduce(state, &AppEvent::Navigate(crate::app::mode::Mode::ShellConfig(id))));
+                                        }
+                                        "explorer" => {
+                                            commands.extend(crate::app::reducers::navigation::reduce(state, &AppEvent::Navigate(crate::app::mode::Mode::Explorer(id))));
+                                        }
+                                        "start_stop" => {
+                                            if is_running {
+                                                commands.extend(crate::app::reducers::container::reduce(state, &AppEvent::StopContainer(id)));
+                                            } else {
+                                                commands.extend(crate::app::reducers::container::reduce(state, &AppEvent::StartContainer(id)));
+                                            }
+                                        }
+                                        "delete" => {
+                                            commands.extend(crate::app::reducers::navigation::reduce(state, &AppEvent::ShowConfirmDialog(
+                                                format!("Delete container '{}'?", name),
+                                                crate::app::event::ConfirmAction::DeleteContainer(id),
+                                            )));
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {
+                    state.container_context_menu = None;
+                }
+            }
+        }
         _ => {}
     }
     commands

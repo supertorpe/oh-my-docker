@@ -55,6 +55,17 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         return Some(AppEvent::Info(String::new()));
     }
 
+    // Container context menu key handling
+    if state.container_context_menu.is_some() {
+        return match key.code {
+            KeyCode::Esc => Some(AppEvent::ContainersContextMenuAction("close".into())),
+            KeyCode::Up | KeyCode::Char('k') => Some(AppEvent::ContainersContextMenuAction("up".into())),
+            KeyCode::Down | KeyCode::Char('j') => Some(AppEvent::ContainersContextMenuAction("down".into())),
+            KeyCode::Enter => Some(AppEvent::ContainersContextMenuAction("select".into())),
+            _ => Some(AppEvent::ContainersContextMenuAction("close".into())),
+        };
+    }
+
     // Context menu key handling
     if state.explorer.context_menu.is_some() {
         return match key.code {

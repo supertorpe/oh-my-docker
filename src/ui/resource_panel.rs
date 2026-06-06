@@ -6,7 +6,7 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::{Block, Borders, Cell, Paragraph, BorderType, Row, Table, TableState};
+use ratatui::widgets::{Block, Borders, Cell, Clear, Paragraph, BorderType, Row, Table, TableState};
 
 use crate::app::event::{ContainerSummary, ImageEntry, NetworkEntry, VolumeEntry};
 
@@ -464,6 +464,7 @@ pub fn render_containers(
     extra: &ContainerStateExtra,
     tick_count: u64,
     polling_interval_ms: u64,
+    context_menu: &Option<crate::app::state::ContextMenuState>,
 ) {
     if state.show_column_picker {
         let labels: Vec<(&str, bool)> = ContainerResource::column_picker_labels().iter().map(|l| (*l, true)).collect();
@@ -690,6 +691,37 @@ pub fn render_containers(
 
     if state.filter_active {
         crate::ui::render_filter_bar(frame, inner, &state.filter, "filter");
+    }
+
+    if let Some(ref menu) = context_menu {
+        let menu_w = menu.items.iter().map(|i| i.label.len()).max().unwrap_or(20) as u16 + 4;
+        let menu_h = menu.items.len() as u16 + 2;
+        let mx = menu.x.min(area.width.saturating_sub(menu_w));
+        let my = menu.y.min(area.height.saturating_sub(menu_h));
+        let menu_area = Rect { x: mx, y: my, width: menu_w, height: menu_h };
+
+        frame.render_widget(Clear, menu_area);
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::White))
+            .style(Style::default().bg(Color::Black));
+        frame.render_widget(block.clone(), menu_area);
+
+        let inner_menu = Rect { x: menu_area.x + 1, y: menu_area.y + 1, width: menu_area.width.saturating_sub(2), height: menu_area.height.saturating_sub(2) };
+        for (i, item) in menu.items.iter().enumerate() {
+            let y = inner_menu.y + i as u16;
+            if y >= inner_menu.y + inner_menu.height { break; }
+            let selected = i == menu.selected;
+            let style = if selected {
+                Style::default().fg(Color::Black).bg(Color::White)
+            } else {
+                Style::default().fg(Color::White)
+            };
+            frame.render_widget(
+                Paragraph::new(Span::styled(format!(" {}", item.label), style)),
+                Rect { x: inner_menu.x, y, width: inner_menu.width, height: 1 },
+            );
+        }
     }
 }
 
