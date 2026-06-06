@@ -17,6 +17,9 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
     if state.explorer.host.goto_active || state.explorer.container.goto_active {
         return handle_goto_input(key, state);
     }
+    if state.explorer.host.create_active || state.explorer.container.create_active {
+        return handle_create_input(key, state);
+    }
 
     let code = key.code;
     let mods = key.modifiers;
@@ -82,6 +85,13 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
                 return Some(if host_selected { AppEvent::ExplorerHostEnterDir(entry.name.clone()) } else { AppEvent::ExplorerContainerEnterDir(entry.name.clone()) });
             }
         }
+    }
+    // n - create file/dir
+    if code == KeyCode::Char('n') && mods == KeyModifiers::NONE {
+        return Some(match state.explorer.focus {
+            ExplorerFocus::Left => AppEvent::ExplorerHostActivateCreate,
+            ExplorerFocus::Right => AppEvent::ExplorerContainerActivateCreate,
+        });
     }
     // r - rename
     if code == KeyCode::Char('r') && mods == KeyModifiers::NONE {
@@ -221,6 +231,31 @@ fn handle_goto_input(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         (KeyCode::Char(c), KeyModifiers::NONE) | (KeyCode::Char(c), KeyModifiers::SHIFT) => {
             let new_q = format!("{}{}", current, c);
             Some(AppEvent::ExplorerGotoUpdate(new_q))
+        }
+        _ => None,
+    }
+}
+
+fn handle_create_input(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
+    let host_active = state.explorer.host.create_active;
+    let current = if host_active {
+        &state.explorer.host.create_buffer
+    } else {
+        &state.explorer.container.create_buffer
+    };
+
+    match (key.code, key.modifiers) {
+        (KeyCode::Backspace, _) | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
+            let new_q = current.chars().take(current.chars().count().saturating_sub(1)).collect();
+            Some(AppEvent::ExplorerCreateUpdate(new_q))
+        }
+        (KeyCode::Esc, _) => {
+            Some(AppEvent::ExplorerCreateCancel)
+        }
+        (KeyCode::Enter, _) => Some(AppEvent::ExplorerCreateSubmit),
+        (KeyCode::Char(c), KeyModifiers::NONE) | (KeyCode::Char(c), KeyModifiers::SHIFT) => {
+            let new_q = format!("{}{}", current, c);
+            Some(AppEvent::ExplorerCreateUpdate(new_q))
         }
         _ => None,
     }

@@ -419,6 +419,48 @@ pub async fn delete_in_container(
     Ok(())
 }
 
+pub async fn create_in_container(
+    docker: &Docker,
+    container_id: &str,
+    path: &str,
+    is_dir: bool,
+) -> Result<()> {
+    let cmd = if is_dir {
+        vec!["mkdir".to_string(), "-p".to_string(), "--".to_string(), path.to_string()]
+    } else {
+        vec!["touch".to_string(), "--".to_string(), path.to_string()]
+    };
+    let exec = docker
+        .create_exec(
+            container_id,
+            CreateExecOptions {
+                cmd: Some(cmd),
+                attach_stdout: Some(true),
+                attach_stderr: Some(true),
+                ..Default::default()
+            },
+        )
+        .await?;
+
+    let output = docker.start_exec(&exec.id, None::<StartExecOptions>).await?;
+
+    if let StartExecResults::Attached { mut output, .. } = output {
+        while let Some(msg_result) = output.next().await {
+            match msg_result {
+                Ok(LogOutput::StdErr { message }) => {
+                    let stderr = String::from_utf8_lossy(&message);
+                    let trimmed = stderr.trim();
+                    if !trimmed.is_empty() {
+                        return Err(anyhow::anyhow!("{}", trimmed));
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    Ok(())
+}
+
 pub async fn rename_in_container(
     docker: &Docker,
     container_id: &str,

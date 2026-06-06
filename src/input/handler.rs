@@ -63,7 +63,9 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
         || state.explorer.host.rename_active
         || state.explorer.container.rename_active
         || state.explorer.host.goto_active
-        || state.explorer.container.goto_active;
+        || state.explorer.container.goto_active
+        || state.explorer.host.create_active
+        || state.explorer.container.create_active;
 
     if state.error_persistent {
         return Some(AppEvent::Info(String::new()));

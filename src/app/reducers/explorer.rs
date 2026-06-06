@@ -223,6 +223,71 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             }
         }
 
+        AppEvent::ExplorerHostActivateCreate => {
+            state.explorer.host.create_buffer = String::new();
+            state.explorer.host.create_active = true;
+        }
+        AppEvent::ExplorerContainerActivateCreate => {
+            state.explorer.container.create_buffer = String::new();
+            state.explorer.container.create_active = true;
+        }
+        AppEvent::ExplorerCreateUpdate(q) => {
+            if state.explorer.host.create_active {
+                state.explorer.host.create_buffer = q.clone();
+            } else if state.explorer.container.create_active {
+                state.explorer.container.create_buffer = q.clone();
+            }
+        }
+        AppEvent::ExplorerCreateCancel => {
+            if state.explorer.host.create_active {
+                state.explorer.host.create_active = false;
+                state.explorer.host.create_buffer = String::new();
+            }
+            if state.explorer.container.create_active {
+                state.explorer.container.create_active = false;
+                state.explorer.container.create_buffer = String::new();
+            }
+        }
+        AppEvent::ExplorerCreateSubmit => {
+            if state.explorer.host.create_active {
+                let name = std::mem::take(&mut state.explorer.host.create_buffer);
+                state.explorer.host.create_active = false;
+                if !name.is_empty() {
+                    let (name, is_dir) = if name.ends_with('/') {
+                        (name.strip_suffix('/').unwrap_or(&name).to_string(), true)
+                    } else {
+                        (name, false)
+                    };
+                    let full_path = if state.explorer.host.path == "/" {
+                        format!("/{}", name)
+                    } else {
+                        format!("{}/{}", state.explorer.host.path, name)
+                    };
+                    commands.push(Command::CreateHostFile(full_path, is_dir));
+                }
+            } else if state.explorer.container.create_active {
+                let name = std::mem::take(&mut state.explorer.container.create_buffer);
+                state.explorer.container.create_active = false;
+                if !name.is_empty() {
+                    let (name, is_dir) = if name.ends_with('/') {
+                        (name.strip_suffix('/').unwrap_or(&name).to_string(), true)
+                    } else {
+                        (name, false)
+                    };
+                    let full_path = if state.explorer.container.path == "/" {
+                        format!("/{}", name)
+                    } else {
+                        let p = state.explorer.container.path.strip_suffix('/').unwrap_or(&state.explorer.container.path);
+                        format!("{}/{}", p, name)
+                    };
+                    commands.push(Command::CreateContainerFile(
+                        state.explorer.container_id.clone(),
+                        full_path,
+                        is_dir,
+                    ));
+                }
+            }
+        }
         AppEvent::ExplorerHostActivateGoto => {
             state.explorer.host.goto_buffer = state.explorer.host.path.clone();
             state.explorer.host.goto_active = true;

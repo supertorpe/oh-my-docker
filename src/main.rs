@@ -267,7 +267,7 @@ fn handle_commands(commands: Vec<Command>, docker: &Option<Docker>, tx: &mpsc::U
             Command::DownloadUpdate { version, download_url } => {
                 update::spawn_download_update(tx.clone(), version, download_url);
             }
-            Command::ListContainerDir(_, _) | Command::ListHostDir(_) | Command::ListVolumeDir(_, _) | Command::CopyToContainer(_, _, _) | Command::CopyFromContainer(_, _, _) | Command::DeleteHostFile(_) | Command::DeleteContainerFile(_, _) | Command::RenameHostFile(_, _) | Command::RenameContainerFile(_, _, _) | Command::FetchContainerWorkingDir(_) | Command::RemoveVolumeHelper(_) => {
+            Command::ListContainerDir(_, _) | Command::ListHostDir(_) | Command::ListVolumeDir(_, _) | Command::CopyToContainer(_, _, _) | Command::CopyFromContainer(_, _, _) | Command::DeleteHostFile(_) | Command::DeleteContainerFile(_, _) | Command::RenameHostFile(_, _) | Command::RenameContainerFile(_, _, _) | Command::CreateHostFile(_, _) | Command::CreateContainerFile(_, _, _) | Command::FetchContainerWorkingDir(_) | Command::RemoveVolumeHelper(_) => {
                 handle_explorer_commands(cmd, docker.as_ref().unwrap(), tx, state);
             }
             _ => {
@@ -408,6 +408,38 @@ fn handle_explorer_commands(
                     }
                     Err(e) => {
                         let _ = tx.send(app::event::AppEvent::ExplorerTransferError(format!("Delete failed: {}", e)));
+                    }
+                }
+            });
+        }
+        Command::CreateHostFile(path, is_dir) => {
+            let tx = tx.clone();
+            tokio::spawn(async move {
+                let result = if is_dir {
+                    tokio::fs::create_dir_all(&path).await
+                } else {
+                    tokio::fs::write(&path, b"").await
+                };
+                match result {
+                    Ok(()) => {
+                        let _ = tx.send(app::event::AppEvent::ExplorerTransferComplete("Created".to_string()));
+                    }
+                    Err(e) => {
+                        let _ = tx.send(app::event::AppEvent::ExplorerTransferError(format!("Create failed: {}", e)));
+                    }
+                }
+            });
+        }
+        Command::CreateContainerFile(container_id, path, is_dir) => {
+            let d = docker.clone();
+            let tx = tx.clone();
+            tokio::spawn(async move {
+                match docker::explorer::create_in_container(&d, &container_id, &path, is_dir).await {
+                    Ok(()) => {
+                        let _ = tx.send(app::event::AppEvent::ExplorerTransferComplete("Created".to_string()));
+                    }
+                    Err(e) => {
+                        let _ = tx.send(app::event::AppEvent::ExplorerTransferError(format!("Create failed: {}", e)));
                     }
                 }
             });

@@ -197,6 +197,8 @@ pub struct ExplorerPanel {
     pub rename_buffer: String,
     pub goto_active: bool,
     pub goto_buffer: String,
+    pub create_active: bool,
+    pub create_buffer: String,
     pub loading: bool,
 }
 
@@ -214,6 +216,8 @@ impl Default for ExplorerPanel {
             rename_buffer: String::new(),
             goto_active: false,
             goto_buffer: String::new(),
+            create_active: false,
+            create_buffer: String::new(),
             loading: true,
         }
     }
