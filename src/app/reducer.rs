@@ -241,6 +241,10 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
             match kind {
                 MouseClickKind::ScrollUp => scroll_state(state, -1),
                 MouseClickKind::ScrollDown => scroll_state(state, 1),
+                _ if state.explorer.context_menu.is_some()
+                    && matches!(kind, MouseClickKind::Left | MouseClickKind::Right) => {
+                    state.explorer.context_menu = None;
+                }
                 MouseClickKind::Left if is_base && *row == 1 => {
                     if let Some(tab) = tab_from_col(*col, state) {
                         state.selected_tab = tab;
@@ -443,6 +447,64 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                                     state.explorer.container.selected = table_row;
                                 }
                             }
+                        }
+                    }
+                }
+                MouseClickKind::Right if matches!(state.navigation.mode_stack.current(), Mode::Explorer(_) | Mode::ExplorerVolume(_, _)) && *row > 0 => {
+                    let left_width = (state.term_width * 48) / 100;
+                    let is_host = *col < left_width;
+                    let p = if is_host { &state.explorer.host } else { &state.explorer.container };
+                    let show_parent = p.path != "/";
+                    let visual_row = row.saturating_sub(1) as usize;
+                    let table_row = show_parent as usize + visual_row;
+                    let all_len = p.all_items.len();
+                    if table_row > 0 && table_row <= all_len {
+                        let item_idx = table_row - 1;
+                        if let Some(entry) = p.all_items.get(item_idx) {
+                            let mut items = Vec::new();
+                            if is_host {
+                                items.push(crate::app::state::ContextMenuItem {
+                                    label: "Copy to container".into(),
+                                    action: "copy_to_container".into(),
+                                });
+                                if !entry.is_dir {
+                                    items.push(crate::app::state::ContextMenuItem {
+                                        label: "Preview".into(),
+                                        action: "preview".into(),
+                                    });
+                                }
+                                items.push(crate::app::state::ContextMenuItem {
+                                    label: "Rename".into(),
+                                    action: "rename".into(),
+                                });
+                                items.push(crate::app::state::ContextMenuItem {
+                                    label: "Delete".into(),
+                                    action: "delete".into(),
+                                });
+                            } else {
+                                items.push(crate::app::state::ContextMenuItem {
+                                    label: "Copy to host".into(),
+                                    action: "copy_from_container".into(),
+                                });
+                                if entry.is_dir {
+                                    items.push(crate::app::state::ContextMenuItem {
+                                        label: "Enter directory".into(),
+                                        action: "enter_dir".into(),
+                                    });
+                                }
+                                items.push(crate::app::state::ContextMenuItem {
+                                    label: "Delete".into(),
+                                    action: "delete".into(),
+                                });
+                            }
+                            state.explorer.context_menu = Some(crate::app::state::ContextMenuState {
+                                x: *col,
+                                y: *row,
+                                selected: 0,
+                                items,
+                                is_host,
+                                item_index: item_idx,
+                            });
                         }
                     }
                 }
@@ -675,8 +737,9 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                 | AppEvent::ExplorerContainerToggleSelect
                 | AppEvent::ExplorerCopySelected
                 | AppEvent::ExplorerDeleteSelected
-                |                 AppEvent::ExplorerHostDirUpdated(_, _)
-                | AppEvent::ContainerWorkingDir(_, _) => {
+                | AppEvent::ExplorerHostDirUpdated(_, _)
+                | AppEvent::ContainerWorkingDir(_, _)
+                | AppEvent::ExplorerContextMenuAction(_) => {
                     commands.extend(crate::app::reducers::explorer::reduce(state, &event));
                 }
                 AppEvent::ShowFilePreview(path, is_host) => {

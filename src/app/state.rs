@@ -226,6 +226,22 @@ impl Default for ExplorerPanel {
 }
 
 #[derive(Clone, Debug)]
+pub struct ContextMenuItem {
+    pub label: String,
+    pub action: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct ContextMenuState {
+    pub x: u16,
+    pub y: u16,
+    pub selected: usize,
+    pub items: Vec<ContextMenuItem>,
+    pub is_host: bool,
+    pub item_index: usize,
+}
+
+#[derive(Clone, Debug)]
 pub struct ExplorerState {
     pub focus: ExplorerFocus,
     pub host: ExplorerPanel,
@@ -239,6 +255,7 @@ pub struct ExplorerState {
     pub last_click_time: Option<Instant>,
     pub last_click_is_host: bool,
     pub last_click_item_index: usize,
+    pub context_menu: Option<ContextMenuState>,
 }
 
 #[derive(Clone, Debug)]
@@ -262,6 +279,7 @@ impl Default for ExplorerState {
             transfer_error: None,
             transfer_message_clear_tick: 0,
             transfer_error_clear_tick: 0,
+            context_menu: None,
             last_click_time: None,
             last_click_is_host: false,
             last_click_item_index: 0,

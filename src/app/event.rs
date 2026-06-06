@@ -112,6 +112,7 @@ pub enum ConfirmAction {
 #[derive(Clone, Debug)]
 pub enum MouseClickKind {
     Left,
+    Right,
     ScrollUp,
     ScrollDown,
 }
@@ -257,6 +258,7 @@ pub enum AppEvent {
     PreviewContent(String, Vec<String>),
     PreviewError(String),
     ClosePreview,
+    ExplorerContextMenuAction(String),
     ScrollPreview(i32),
     ExplorerHostDirUpdated(String, Vec<ExplorerEntry>),
     ContainerWorkingDir(String, String),

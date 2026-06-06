@@ -13,6 +13,13 @@ pub fn handle_mouse(event: MouseEvent) -> Option<AppEvent> {
                 kind: MouseClickKind::Left,
             })
         }
+        MouseEventKind::Down(MouseButton::Right) => {
+            Some(AppEvent::MouseClick {
+                row: event.row,
+                col: event.column,
+                kind: MouseClickKind::Right,
+            })
+        }
         MouseEventKind::ScrollDown => {
             Some(AppEvent::MouseClick {
                 row: event.row,
@@ -46,6 +53,17 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<AppEvent> {
 
     if state.error_persistent {
         return Some(AppEvent::Info(String::new()));
+    }
+
+    // Context menu key handling
+    if state.explorer.context_menu.is_some() {
+        return match key.code {
+            KeyCode::Esc => Some(AppEvent::ExplorerContextMenuAction("close".into())),
+            KeyCode::Up | KeyCode::Char('k') => Some(AppEvent::ExplorerContextMenuAction("up".into())),
+            KeyCode::Down | KeyCode::Char('j') => Some(AppEvent::ExplorerContextMenuAction("down".into())),
+            KeyCode::Enter => Some(AppEvent::ExplorerContextMenuAction("select".into())),
+            _ => Some(AppEvent::ExplorerContextMenuAction("close".into())),
+        };
     }
 
     // Preview mode intercepts keys when visible

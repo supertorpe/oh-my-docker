@@ -90,6 +90,36 @@ pub fn render(frame: &mut Frame, area: Rect, state: &mut AppState) {
         );
     }
 
+    if let Some(ref menu) = state.explorer.context_menu {
+        let menu_w = menu.items.iter().map(|i| i.label.len()).max().unwrap_or(20) as u16 + 4;
+        let menu_h = menu.items.len() as u16 + 2;
+        let mx = menu.x.min(area.width.saturating_sub(menu_w));
+        let my = menu.y.min(area.height.saturating_sub(menu_h));
+        let menu_area = Rect { x: mx, y: my, width: menu_w, height: menu_h };
+
+        frame.render_widget(Clear, menu_area);
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::White))
+            .style(Style::default().bg(Color::Black));
+        frame.render_widget(block.clone(), menu_area);
+
+        let inner = Rect { x: menu_area.x + 1, y: menu_area.y + 1, width: menu_area.width.saturating_sub(2), height: menu_area.height.saturating_sub(2) };
+        for (i, item) in menu.items.iter().enumerate() {
+            let y = inner.y + i as u16;
+            if y >= inner.y + inner.height { break; }
+            let selected = i == menu.selected;
+            let style = if selected {
+                Style::default().fg(Color::Black).bg(Color::White)
+            } else {
+                Style::default().fg(Color::White)
+            };
+            frame.render_widget(
+                Paragraph::new(Span::styled(format!(" {}", item.label), style)),
+                Rect { x: inner.x, y, width: inner.width, height: 1 },
+            );
+        }
+    }
 }
 
 fn render_prompt(frame: &mut Frame, area: Rect) {

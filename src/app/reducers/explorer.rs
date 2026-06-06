@@ -577,6 +577,97 @@ pub fn reduce(state: &mut AppState, event: &AppEvent) -> Vec<Command> {
             state.explorer.transfer_error_clear_tick = state.tick_count + 2;
         }
 
+        AppEvent::ExplorerContextMenuAction(action) => {
+            match action.as_str() {
+                "close" => {
+                    state.explorer.context_menu = None;
+                }
+                "up" => {
+                    if let Some(ref mut menu) = state.explorer.context_menu {
+                        menu.selected = menu.selected.saturating_sub(1);
+                    }
+                }
+                "down" => {
+                    if let Some(ref mut menu) = state.explorer.context_menu {
+                        let max = menu.items.len().saturating_sub(1);
+                        if menu.selected < max {
+                            menu.selected += 1;
+                        }
+                    }
+                }
+                "select" => {
+                    if let Some(ref menu) = state.explorer.context_menu.clone() {
+                        let is_host = menu.is_host;
+                        let item_idx = menu.item_index;
+                        let action_label = menu.items.get(menu.selected).map(|i| i.action.clone());
+                        state.explorer.context_menu = None;
+                        let panel = if is_host { &mut state.explorer.host } else { &mut state.explorer.container };
+                        panel.selected = item_idx + if panel.path != "/" { 1 } else { 0 };
+                        if let Some(action_str) = action_label {
+                            match action_str.as_str() {
+                                "copy_to_container" => {
+                                    commands.extend(crate::app::reducers::explorer::reduce(state, &AppEvent::ExplorerCopyToContainer));
+                                }
+                                "copy_from_container" => {
+                                    commands.extend(crate::app::reducers::explorer::reduce(state, &AppEvent::ExplorerCopyFromContainer));
+                                }
+                                "preview" => {
+                                    if let Some(entry) = panel.all_items.get(item_idx) {
+                                        let path = if panel.path == "/" {
+                                            format!("/{}", entry.name)
+                                        } else {
+                                            format!("{}/{}", panel.path, entry.name)
+                                        };
+                                        commands.push(Command::LoadFilePreview(
+                                            if is_host { String::new() } else { state.explorer.container_id.clone() },
+                                            path,
+                                            is_host,
+                                        ));
+                                    }
+                                }
+                                "rename" => {
+                                    if is_host {
+                                        commands.extend(crate::app::reducers::explorer::reduce(state, &AppEvent::ExplorerHostActivateRename));
+                                    }
+                                }
+                                "delete" => {
+                                    if let Some(entry) = panel.all_items.get(item_idx) {
+                                        panel.selected_names.insert(entry.name.clone());
+                                        commands.extend(crate::app::reducers::explorer::reduce(state, &AppEvent::ExplorerDeleteSelected));
+                                    }
+                                }
+                                "enter_dir" => {
+                                    if let Some(entry) = panel.all_items.get(item_idx) {
+                                        let path = if panel.path.ends_with('/') {
+                                            format!("{}{}", panel.path, entry.name)
+                                        } else {
+                                            format!("{}/{}", panel.path, entry.name)
+                                        };
+                                        panel.path = format!("{}/", path);
+                                        panel.selected = 0;
+                                        panel.filter = String::new();
+                                        panel.filter_active = false;
+                                        if let Mode::ExplorerVolume(_, vol_name) = state.navigation.mode_stack.current() {
+                                            commands.push(Command::ListVolumeDir(vol_name.clone(), panel.path.clone()));
+                                        } else {
+                                            commands.push(Command::ListContainerDir(
+                                                state.explorer.container_id.clone(),
+                                                panel.path.clone(),
+                                            ));
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                _ => {
+                    state.explorer.context_menu = None;
+                }
+            }
+        }
+
         _ => {}
     }
 
