@@ -117,6 +117,44 @@ fn render_prompt(frame: &mut Frame, area: Rect) {
     frame.render_widget(paragraph, area);
 }
 
+fn render_breadcrumb_bar(frame: &mut Frame, area: Rect, path: &str, is_focused: bool) -> Vec<String> {
+    let mut segments: Vec<String> = Vec::new();
+    if path == "/" {
+        segments.push("/".to_string());
+    } else {
+        segments.push("/".to_string());
+        for part in path.trim_start_matches('/').split('/') {
+            if !part.is_empty() {
+                segments.push(part.to_string());
+            }
+        }
+    }
+    let mut display = String::new();
+    let mut seg_paths = Vec::new();
+    let mut cumulative = String::new();
+    for seg in &segments {
+        if seg == "/" {
+            display.push_str(" / ");
+            cumulative = "/".to_string();
+        } else {
+            display.push_str(&format!(" {} ", seg));
+            if cumulative != "/" {
+                cumulative = format!("{}/{}", cumulative, seg);
+            } else {
+                cumulative = format!("/{}", seg);
+            }
+        }
+        seg_paths.push(cumulative.clone());
+    }
+    let fg = if is_focused { Color::Cyan } else { Color::DarkGray };
+    frame.render_widget(
+        Paragraph::new(Span::styled(display, Style::default().fg(fg)))
+            .style(Style::default().bg(Color::Black)),
+        area,
+    );
+    seg_paths
+}
+
 fn render_panel(
     frame: &mut Frame,
     area: Rect,
@@ -144,6 +182,22 @@ fn render_panel(
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(border_color));
     let inner_area = block.inner(area);
+    let (breadcrumb_area, list_area) = {
+        let inner = inner_area;
+        let bc_h = 1u16.min(inner.height.saturating_sub(2));
+        let bc_area = Rect { x: inner.x, y: inner.y, width: inner.width, height: bc_h };
+        let list_h = inner.height.saturating_sub(bc_h);
+        if list_h == 0 {
+            (bc_area, Rect { x: inner.x, y: inner.y + bc_h, width: inner.width, height: 0 })
+        } else {
+            let list_area = Rect { x: inner.x, y: inner.y + bc_h, width: inner.width, height: list_h };
+            (bc_area, list_area)
+        }
+    };
+
+    // Draw border block first
+    frame.render_widget(block.clone(), area);
+    render_breadcrumb_bar(frame, breadcrumb_area, &panel.path, is_focused);
 
     if panel.loading && panel.items.is_empty() {
         let spinner = crate::ui::spinner_char(tick_count);
@@ -155,7 +209,7 @@ fn render_panel(
             )),
             Line::from(""),
         ]);
-        frame.render_widget(Paragraph::new(text).block(block), area);
+        frame.render_widget(Paragraph::new(text), list_area);
         render_rename_bar(frame, inner_area, panel);
         render_goto_bar(frame, inner_area, panel);
         render_create_bar(frame, inner_area, panel);
@@ -166,7 +220,7 @@ fn render_panel(
     }
 
     let show_parent = panel.path != "/";
-    let wide = inner_area.width >= 55;
+    let wide = list_area.width >= 55;
 
     if panel.items.is_empty() && !panel.loading {
         if show_parent {
@@ -185,14 +239,13 @@ fn render_panel(
             rows.push(Row::new(vec![cell])
                 .style(style)
                 .height(1));
-            let table = Table::new(rows, vec![Constraint::Fill(1)])
-                .block(block);
+            let table = Table::new(rows, vec![Constraint::Fill(1)]);
             let mut table_state = if is_focused {
                 TableState::new().with_selected(Some(0)).with_offset(0)
             } else {
                 TableState::new().with_offset(0)
             };
-            frame.render_stateful_widget(table, area, &mut table_state);
+            frame.render_stateful_widget(table, list_area, &mut table_state);
         } else {
             let text = ratatui::text::Text::from(vec![
                 Line::from(""),
@@ -202,7 +255,7 @@ fn render_panel(
                 )),
                 Line::from(""),
             ]);
-            frame.render_widget(Paragraph::new(text).block(block), area);
+            frame.render_widget(Paragraph::new(text), list_area);
         }
         render_rename_bar(frame, inner_area, panel);
         render_goto_bar(frame, inner_area, panel);
@@ -262,8 +315,7 @@ fn render_panel(
     }
 
     let widths = vec![Constraint::Fill(1)];
-    let table = Table::new(rows, widths)
-        .block(block);
+    let table = Table::new(rows, widths);
 
     let mut table_state = if is_focused {
         let selected_row = panel.selected;
@@ -274,7 +326,7 @@ fn render_panel(
         TableState::new().with_offset(panel.scroll_offset)
     };
 
-    frame.render_stateful_widget(table, area, &mut table_state);
+    frame.render_stateful_widget(table, list_area, &mut table_state);
     panel.scroll_offset = table_state.offset();
     render_rename_bar(frame, inner_area, panel);
     render_goto_bar(frame, inner_area, panel);
@@ -283,7 +335,6 @@ fn render_panel(
         crate::ui::render_filter_bar(frame, inner_area, &panel.filter, "filter");
     }
 }
-
 fn render_rename_bar(frame: &mut Frame, inner: Rect, panel: &ExplorerPanel) {
     if !panel.rename_active {
         return;
