@@ -314,6 +314,7 @@ pub struct AppState {
     pub quit: bool,
     pub mouse_enabled: bool,
     pub term_width: u16,
+    pub term_height: u16,
 }
 
 impl AppState {
@@ -342,6 +343,7 @@ impl AppState {
             quit: false,
             mouse_enabled: false,
             term_width: 80,
+            term_height: 25,
         }
     }
 

@@ -243,7 +243,28 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                 MouseClickKind::ScrollDown => scroll_state(state, 1),
                 _ if state.explorer.context_menu.is_some()
                     && matches!(kind, MouseClickKind::Left | MouseClickKind::Right) => {
-                    state.explorer.context_menu = None;
+                    let close = {
+                        let menu = state.explorer.context_menu.as_ref().unwrap();
+                        let menu_w = menu.items.iter().map(|i| i.label.len()).max().unwrap_or(20) as u16 + 4;
+                        let menu_h = menu.items.len() as u16 + 2;
+                        let area_h = if is_base { state.term_height.saturating_sub(4) } else { state.term_height.saturating_sub(1) };
+                        let mx = menu.x.min(state.term_width.saturating_sub(menu_w));
+                        let my = menu.y.min(area_h.saturating_sub(menu_h));
+                        let inside = *col >= mx && *col < mx + menu_w && *row >= my && *row < my + menu_h;
+                        if inside && matches!(kind, MouseClickKind::Left) && *row >= my + 2 {
+                            let item_idx = (*row - my - 2) as usize;
+                            if item_idx < menu.items.len() {
+                                state.explorer.context_menu.as_mut().unwrap().selected = item_idx;
+                                let select_event = AppEvent::ExplorerContextMenuAction("select".into());
+                                commands.extend(crate::app::reducers::explorer::reduce(state, &select_event));
+                                return commands;
+                            }
+                        }
+                        !inside
+                    };
+                    if close {
+                        state.explorer.context_menu = None;
+                    }
                 }
                 MouseClickKind::Left if is_base && *row == 1 => {
                     if let Some(tab) = tab_from_col(*col, state) {

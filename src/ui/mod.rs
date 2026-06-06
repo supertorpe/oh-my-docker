@@ -50,6 +50,7 @@ pub mod theme;
 pub fn render(frame: &mut Frame, state: &mut AppState) {
     let area = frame.area();
     state.term_width = area.width;
+    state.term_height = area.height;
     let current = state.navigation.mode_stack.current();
     let is_base = mode::mode_to_tab(current).is_some();
 
