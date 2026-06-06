@@ -39,6 +39,7 @@ Requires Docker to be installed and the user to have access to the Docker socket
 ## Features
 
 - **Container list** — browse running/stopped containers with fuzzy search, optional initial filter via CLI arg
+- **Context menus** — right-click on containers for quick access to details, logs, shell, explorer, start/stop, delete. Right-click in file explorer for copy, preview, rename, delete
 - **Container details** — inspect metadata, env, volumes, networks, ports, labels; scrollable with `j`/`k`/`PgUp`/`PgDn`
 - **Multi-select mode** — press `Space` to enter selection mode, select individual containers, batch start/stop/delete
 - **Column picker** — hide/show columns in containers, images, networks, and volumes with `Ctrl+O`
@@ -100,6 +101,7 @@ Requires Docker to be installed and the user to have access to the Docker socket
 | `Ctrl+A` | Select all filtered containers (in selection mode) |
 | `Esc` | Exit selection mode |
 | `Ctrl+O` | Toggle column picker |
+| Right-click | Open context menu (details, logs, shell, explorer, start/stop, delete) |
 
 ### Container Details
 
@@ -260,6 +262,7 @@ Live stats for running containers (CPU, memory, network, block I/O, PIDs), updat
 | `/` | Activate filter |
 | `Esc` | Go back / close explorer |
 | Mouse wheel | Scroll focused panel |
+| Right-click | Open context menu (copy, preview, rename, delete, enter directory) |
 
 ### Confirm Dialog
 
