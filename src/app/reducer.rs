@@ -346,7 +346,7 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                         scroll_off = p.scroll_offset;
                         all_len = p.all_items.len();
                     }
-                    let visual_row = row.saturating_sub(1) as usize;
+                    let visual_row = row.saturating_sub(2) as usize;
                     let table_row = scroll_off + visual_row;
                     if show_parent && table_row == 0 {
                         state.explorer.last_click_time = None;
@@ -475,7 +475,7 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                     let is_host = *col < left_width;
                     let p = if is_host { &state.explorer.host } else { &state.explorer.container };
                     let show_parent = p.path != "/";
-                    let visual_row = row.saturating_sub(1) as usize;
+                    let visual_row = row.saturating_sub(2) as usize;
                     let table_row = show_parent as usize + visual_row;
                     let all_len = p.all_items.len();
                     if table_row > 0 && table_row <= all_len {
