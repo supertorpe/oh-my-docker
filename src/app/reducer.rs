@@ -473,22 +473,31 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                 MouseClickKind::Right if matches!(state.navigation.mode_stack.current(), Mode::Explorer(_) | Mode::ExplorerVolume(_, _)) && *row > 0 => {
                     let left_width = (state.term_width * 48) / 100;
                     let is_host = *col < left_width;
-                    let p = if is_host { &state.explorer.host } else { &state.explorer.container };
-                    let show_parent = p.path != "/";
+                    let show_parent;
+                    let scroll_off;
+                    let all_len;
+                    {
+                        let p = if is_host { &state.explorer.host } else { &state.explorer.container };
+                        show_parent = p.path != "/";
+                        scroll_off = p.scroll_offset;
+                        all_len = p.all_items.len();
+                    }
                     let visual_row = row.saturating_sub(2) as usize;
-                    let table_row = show_parent as usize + visual_row;
-                    let all_len = p.all_items.len();
-                    if table_row > 0 && table_row <= all_len {
-                        let item_idx = table_row - 1;
-                        let entry_name = p.all_items.get(item_idx).map(|e| e.name.clone());
-                        let entry_is_dir = p.all_items.get(item_idx).map(|e| e.is_dir).unwrap_or(false);
-                        // Select the clicked file before showing the menu
-                        if is_host {
-                            state.explorer.host.selected = table_row;
-                        } else {
-                            state.explorer.container.selected = table_row;
-                        }
-                        if entry_name.is_some() {
+                    let table_row = scroll_off + visual_row;
+                    if !(show_parent && table_row == 0) {
+                        let item_idx = if show_parent { table_row.saturating_sub(1) } else { table_row };
+                        if item_idx < all_len {
+                            let entry_is_dir;
+                            {
+                                let p = if is_host { &state.explorer.host } else { &state.explorer.container };
+                                entry_is_dir = p.all_items[item_idx].is_dir;
+                            }
+                            // Select the clicked file before showing the menu
+                            if is_host {
+                                state.explorer.host.selected = table_row;
+                            } else {
+                                state.explorer.container.selected = table_row;
+                            }
                             let mut items = Vec::new();
                             if is_host {
                                 items.push(crate::app::state::ContextMenuItem {
@@ -539,6 +548,7 @@ pub fn reduce(state: &mut AppState, event: AppEvent) -> Vec<Command> {
                 _ => {}
             }
         }
+
 
         AppEvent::SortByColumn(col) => {
             match state.navigation.mode_stack.current() {
