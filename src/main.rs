@@ -188,6 +188,9 @@ async fn main() -> Result<()> {
             cmd.arg(&shell.shell);
             let status = cmd.status();
             terminal = init_terminal()?;
+            if state.mouse_enabled {
+                let _ = crossterm::execute!(std::io::stdout(), crossterm::event::EnableMouseCapture);
+            }
             match status {
                 Ok(s) if s.success() => {
                     let c = app::reducer::reduce(&mut state, app::event::AppEvent::CloseShell);
